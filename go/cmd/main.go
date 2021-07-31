@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/hosted-fornet/ursr/go/pkg/config"
 
-	"github.com/cmarcelo/go-urbit"
+	"github.com/hosted-fornet/go-urbit"
 	"go.uber.org/zap"
 )
 
