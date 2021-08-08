@@ -7,10 +7,14 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	sugar *zap.SugaredLogger
+)
+
 func main() {
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
-	sugar := logger.Sugar()
+	sugar = logger.Sugar()
 	sugar.Debugw("Initialized logger.")
 
 	ship, err := urbit.Dial(config.Address, config.Passcode, nil)
