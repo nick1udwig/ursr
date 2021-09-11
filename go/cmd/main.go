@@ -52,7 +52,7 @@ func monitorShipEvents(
 			switch event.Type {
 			case "diff":
 				if subscription.ID == event.ID {
-					ship.Poke(config.UrSrProviderAppName, event.Data) // pong
+					// ship.Poke(config.UrSrProviderAppName, event.Data) // pong
 				}
 			default:
 			}

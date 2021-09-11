@@ -1,0 +1,219 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <input type="text" id="provider" name="provider" placeholder="Provider (e.g. '~wes')." />
+        <input type="text" id="code" name="code" placeholder="Client ship code (e.g. 'ropnys-batwyd-nossyt-mapwet')" />
+        <br /><br/ >
+
+        <button id="btn">Send</button>
+
+        <script src="/~landscape/js/channel.js"></script>
+        <script>
+            let audioCtx;
+            let audioStream;
+
+            function createStreamingAudio() {
+              /*
+                Create the audio processing interface. Use a Data URL to embed a small JS file containing a
+                custom AudioWorkletProcessor. The custom processor will take the user's microphone data as
+                32-bit float PCM (gain-normalized) in [-1,+1] audio data and convert it to signed 16-bit
+                integer linear PCM audio data.
+              */
+              let workletProcessorDataURL = `data:application/javascript;charset=utf8,${encodeURIComponent(`
+                class AudioConvertingProcessor extends AudioWorkletProcessor {
+                  constructor() {
+                    super();
+                  }
+
+                  process(inputList, outputList, parameters) {
+                    const inputChannel = inputList[0][0];
+                    if (inputChannel) {
+                      const PCM16iSamples = [];
+                      for ( let i = 0; i < inputChannel.length; i++) {
+                        let val = Math.round((2**16-1) * (1.0+inputChannel[i])/2) - 2**15;
+                        if (val < -(2**15) || val > (2**16-1)) {
+                          throw new Error();
+                        }
+                        PCM16iSamples.push(val);
+                      }
+                    /*
+                      Use the MessagePort to communicate the converted data between the processor
+                      and the AudioWorkletNode.
+                    */
+                    this.port.postMessage(new Int16Array(PCM16iSamples));
+                    }
+
+                    return true;
+                  }
+                }
+
+                registerProcessor("audio-converting-processor", AudioConvertingProcessor);
+              `)}`;
+              audioCtx = new AudioContext();
+              audioCtx.audioWorklet.addModule(workletProcessorDataURL)
+                .then(() => {
+                  processorNode = new AudioWorkletNode(audioCtx, "audio-converting-processor");
+                  audioInput = audioCtx.createMediaStreamSource(audioStream);
+                  audioInput.connect(processorNode);
+                  processorNode.port.onmessage = (e) => {
+                    window.urb.poke(
+                        window.ship,
+                        "spider",
+                        "spider-input",
+                        {
+                            sendTid: {
+                                "ursr-audio": {
+                                    "audio": e.data
+                                }
+                            }
+                        },
+                        () => console.log("Sent poke with audio data."),
+                        (err) => console.log(`Poke failed: ${err}`),
+                    );
+                    //  /*
+                    //    Send converted audio from the AudioWorkletProcessor to the ASR Engine once the
+                    //    WebSocket connection is open.
+                    //  */
+                    // if (websocket.readyState === WebSocket.OPEN) {
+                    //   websocket.send(e.data);
+                    // }
+                  }
+                  processorNode.onprocessorerror = (error) => {
+                    console.log("Audio data not in required [-1.0, +1.0] range.");
+                    // stopRecording();
+                    // createNewMessage(
+                    //   "The microphone audio data was not in the expected [-1,+1] range as floating point. "
+                    //   + "Please refer to xkcd.com/2200",
+                    //   ["log-info", "log-info-error"]
+                    // )
+                  }
+                })
+                .catch(() => console.log("Did not create AudioWorkletNode."));
+            }
+
+            const login =  async (pass) => {
+                let loginRes = await fetch('/~/login', {
+                    method: 'POST',
+                    body: `password=${pass}`
+                });
+                if (loginRes.status != 204) {
+                    console.log(`Failed to log in: ${loginRes}`);
+                    return;
+                }
+
+                const res = await fetch('/~landscape/js/session.js');
+                const sessionCode = await res.text();
+                window.ship = sessionCode.match(/"([^"]+)"/)[1];
+
+                console.log(`Logged in to ${window.ship}.`);
+            };
+
+            const handleFactsFromApp = async (fact, appSubscription) => {
+                console.log("Got fact from app");
+                await readTidsFromApp(fact);
+                unsubscribeFromApp(appSubscription);
+                await subscribeToThread();
+                sendAudioToThread();
+                return;
+                // switch(fact.tag) {
+                //     case "send-tids":
+                //         await readTidsFromApp(fact);
+                //         unsubscribeFromApp();
+                //         await subscribeToThread();
+                //         return;
+                // }
+            };
+
+            let receiveTid = "";
+            let sendTid = "";
+            const readTidsFromApp = async (data) => {
+                receiveTid = data["send-tids"].receive;
+                sendTid = data["send-tids"].send;
+
+                console.log(`Got receiveTid, sendTid from client: ${receiveTid}, ${sendTid}`);
+            };
+
+            const unsubscribeFromApp = async (appSubscription) => {
+                window.urb.unsubscribe(appSubscription);
+                console.log("Unsubscribed from app");
+            };
+
+            const subscribeToThread = async () => {
+                console.log("Subscribing to receive thread.");
+                window.urb.subscribe(
+                    window.ship,
+                    "spider",
+                    "/thread/" + receiveTid + "/updates",
+                    (err) => console.log(`receive-thread: Couldn't subscribe: ${err}.`),
+                    (data) => handleFactsFromThread(data),
+                    (quit) => console.log("receive-thread: Closed subscription."),
+                );
+            };
+
+            const handleFactsFromThread = async (fact) => {
+                console.log(`Got Engine reply: ${fact["engine-reply"]["transcript-formatted"]}.`)
+                return;
+                // console.log("Got fact from thread");
+                // switch(fact.tag) {
+                //     case "engine-reply":
+                //         console.log(`Got Engine reply: ${fact["engine-reply"].transcript}.`)
+                //         return;
+                // }
+            };
+
+            const sendAudioToThread = async () => {
+                console.log("Sending audio to thread...")
+                if (!audioStream) {
+                    audioStream = await navigator.mediaDevices.getUserMedia({audio: true});
+                }
+                createStreamingAudio();
+            };
+
+
+            window.urb = new Channel();
+            let button = document.getElementById("btn");
+
+            button.addEventListener("click", async () => {
+                let provider = document.getElementById("provider").value;
+                if (provider == "") {
+                    provider = "~wes";
+                }
+                let code = document.getElementById("code").value;
+                await login(code);
+
+                // Tell client app to start threads;
+                //  read TIDs from client app.
+                let appSubscription = window.urb.subscribe(
+                    window.ship,
+                    "ursr-client",
+                    "/frontend-path",
+                    (err) => console.log(`ursr-client: Couldn't subscribe: ${err}.`),
+                    (data) => handleFactsFromApp(data, appSubscription),
+                    (quit) => console.log("ursr-client: Closed subscription."),
+                );
+
+                // Send options for request.
+                window.urb.poke(
+                    window.ship,
+                    "ursr-client",
+                    "ursr-client-action",
+                    {
+                        "start-threads": {
+                            "options": {
+                                "command": "recognize",
+                                "format": "raw",
+                                "encoding": "pcm_s16le",
+                                "rate": 16000,
+                                "transcript-formatted": true
+                            },
+                            "provider": provider
+                        }
+                    },
+                    () => console.log("Sent poke to start client threads."),
+                    (err) => console.log(`Poke failed: ${err}`),
+                );
+            });
+        </script>
+    </body>
+</html>

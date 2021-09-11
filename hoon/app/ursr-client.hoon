@@ -1,4 +1,4 @@
-/-  ursr-client
+/-  ursr, ursr-client-action
 /+  default-agent
 |%
 +$  versioned-state
@@ -37,36 +37,33 @@
     |=  [=mark =vase]
     ^-  (quip card _this)
     ?+    mark  (on-poke:def mark vase)
+        %ursr-client-action
+      ~&  >>>  !<(client-action:ursr-client-action vase)
+      =^  cards  state
+      (handle-action:hc !<(client-action:ursr-client-action vase))
+      [cards this]
+    ::
         %noun
       ?+    q.vase  (on-poke:def mark vase)
           %print-state
         ~&  >>  state
         ~&  >>>  bowl  `this
-        ::
+      ::
           %print-subs
         ~&  >>  &2.bowl  `this
-        ::
-          %receive-pong
-        ~&  >>  "got pong in reply from {<src.bowl>}"  `this
       ==
-      ::
-        %ursr-client-action
-        ~&  >>>  !<(action:ursr-client vase)
-        =^  cards  state
-        (handle-action:hc !<(action:ursr-client vase))
-        [cards this]
     ==
   ::
   ++  on-watch
     |=  =path
     ^-  (quip card _this)
     ?+     path  (on-watch:def path)
-        [%counter ~]
-        ~&  >>  "got counter subscription from {<src.bowl>}"  `this
+        [%frontend-path ~]
+        ~&  >>  "got subscription from frontend"  `this
     ==
   ++  on-leave
     |=  =path
-    ~&  "got counter leave request from {<src.bowl>}"  `this
+    ~&  "got subscription leave request on path {<path>}"  `this
   ++  on-peek   on-peek:def
   ++  on-agent
     |=  [=wire =sign:agent:gall]
@@ -91,12 +88,25 @@
 ::  start helper core
 |_  bowl=bowl:gall
 ++  handle-action
-  |=  =action:ursr-client
+  |=  action=client-action:ursr-client-action
   ^-  (quip card _state)
   ?-    -.action
-      %ping
+      %start-threads
+    =/  client-args=args-frontend-to-client:ursr  +.action
+    ~&  >  "got %start-threads request: {<client-args>}"
+    =/  receive-tid   `@ta`(cat 3 'thread_r_' (scot %uv (sham eny.bowl)))
+    =/  send-tid      `@ta`(cat 3 'thread_s_' (scot %uv (sham eny.bowl)))
+    =/  receive-args  [~ `receive-tid %ursr-client-receive-from-provider !>([client-args [receive-tid send-tid]])]
+    =/  send-args     [~ `send-tid %ursr-client-send-to-provider !>(~)]
+    ~&  >  "starting receive {<receive-tid>} and send {<send-tid>}"
     :_  state
-    ~[[%pass /poke-wire %agent [target.action %ursr-provider] %poke %noun !>(%receive-ping)]]
+    :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
+        [%pass /thread/[send-tid] %agent [our.bowl %spider] %poke %spider-start !>(send-args)]
+        [%give %fact ~[/frontend-path] %ursr-client-action !>([%send-tids [receive-tid send-tid]])]
+    ==
+      %send-tids
+    ~&  >>>  "unexpectedly received %send-tids; ignoring"  `state
+    ::
     ::   %increase-counter
     :: =.  counter.state  (add step.action counter.state)
     :: :_  state

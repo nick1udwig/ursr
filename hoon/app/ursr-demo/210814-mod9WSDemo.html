@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<!-- saved from url=(0035)https://mod9.io/websocket-demo.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>WebSocket Demo | Mod9 ASR Engine</title>
+  
+  <style type="text/css">
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      font-family: "Courier New", sans-serif;
+    }
+
+    label {
+      margin: 16px;
+    }
+
+    p {
+      margin: 16px 32px;
+    }
+
+    .disabled {
+      color: #aaaaaa;
+    }
+
+    .log-info {
+      font-family: sans-serif;
+      font-style: italic;
+      color: #444444;
+    }
+
+    .log-info-error {
+      color: #d20000;
+    }
+
+    .mic-img {
+      height: 100%;
+      width: 100%;
+    }
+
+    .silence-count {
+      font-family: sans-serif;
+      background-color: #2daae1;
+      border-radius: 1em;
+      padding: 0px 4px;
+      color: #ffffff;
+      font-style: .8em;
+    }
+
+    .transcript-message {
+      font-weight: bold;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #mic-btn {
+      cursor: pointer;
+      border: none;
+      background-color: #efefef;
+      border-radius: 50%;
+      padding: 15px;
+      height: 80px;
+      width: 80px;
+      margin: 48px 0 16px 0;
+    }
+
+    #mic-btn:hover {
+      background-color: #e4e4e4;
+    }
+
+    #mic-btn.recording {
+      animation: mic-recording 1000ms linear infinite alternate;
+    }
+
+    #settings-container {
+      display: flex;
+      justify-content: center;
+    }
+
+    #transcript {
+      border-radius: 5px;
+      box-shadow: 0 0 9px 3px #efefef;
+      min-width: 617px;
+      width: 65%;
+      margin: 16px 0 32px 0;
+      border: 1px solid #d0d0d0;
+      transition: flex-grow 500ms ease-out;
+      overflow-y: scroll;
+    }
+
+    #transcript.recording {
+      flex-grow: 1;
+    }
+
+    #uri-container {
+      margin-top: 32px;
+      font-size: 18px;
+    }
+
+    #uri-input {
+      padding: 8px 10px;
+      font-size: inherit;
+      font-family: inherit;
+      border: 1px solid #d0d0d0;
+      border-radius: 5px;
+    }
+
+    #welcome-message {
+      transition: opacity 500ms ease-in-out;
+
+    }
+
+    @keyframes mic-recording {
+      from {
+        background-color: rgba(255, 0, 0, .5);
+      }
+
+      to {
+        background-color: rgba(255, 0, 0, .9);
+      }
+
+    }
+
+    @media screen and (max-width: 650px) {
+      #transcript {
+        min-width: unset;
+        width: 95%;
+      }
+    }
+
+    @media screen and (max-width: 945px) {
+      #mic-btn {
+        margin-top: 24px;
+      }
+
+      #uri-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #uri-input-label {
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="container">
+    <div id="uri-container">
+      <label id="uri-input-label" for="uri-input">
+        WebSocket server URI (e.g. "ws://localhost:9980"):
+      </label>
+      <input id="uri-input" size="30" spellcheck="false" type="text" value="wss://mod9.io">
+      <div id="settings-container">
+        <label for="partialSetting">
+          <input type="checkbox" id="partialSetting">
+          Partial transcript
+        </label>
+        <label for="formattedSetting">
+          <input type="checkbox" id="formattedSetting">
+          Formatted transcript
+        </label>
+      </div>
+    </div>
+    <button id="mic-btn">
+      <img class="mic-img" src="./210814-mod9WSDemo_files/microphone-solid.svg">
+    </button>
+    <div id="transcript">
+      <p id="welcome-message" class="log-info">
+        Specify a Websocket server URI. Then click on the microphone to get started.
+      </p>
+    </div>
+  </div>
+  <script>
+    /* Gathering DOM Elements */
+    let container = document.getElementById("container");
+    let formattedSetting = document.getElementById("formattedSetting");
+    let micBtn = document.getElementById("mic-btn");
+    let partialSetting = document.getElementById("partialSetting");
+    let settingsContainer = document.getElementById("settings-container");
+    let transcript = document.getElementById("transcript");
+    let uriInput = document.getElementById("uri-input");
+    let welcome = document.getElementById("welcome-message");
+
+    /* Creating WebSocket and related variables */
+    let audioStream;
+    let audioCtx;
+    let audioInput;
+    let websocket;
+    let processorNode;
+    /*
+      The number of consecutive times the engine returns nothing in the transcript.
+      Consider it silence.
+    */
+    let silenceCount = 0;
+    let isMicOn = false;
+    let topSegment = welcome;
+
+    function changeMessage(el, message) {
+      el.style.opacity = 0;
+      setTimeout(() => {
+        el.innerHTML = message;
+        el.style.opacity = 1;
+      }, 500);
+    }
+
+    function createNewMessage(text = "", classNameList = []) {
+      let newTopSegment = document.createElement("p");
+      let segmentText = document.createTextNode(text);
+      newTopSegment.appendChild(segmentText);
+      if (classNameList.length !== 0) {
+        newTopSegment.classList.add(...classNameList);
+      }
+      transcript.insertBefore(newTopSegment, topSegment);
+      topSegment = newTopSegment;
+    }
+
+    function createStreamingAudio() {
+      /*
+        Create the audio processing interface. Use a Data URL to embed a small JS file containing a
+        custom AudioWorkletProcessor. The custom processor will take the user's microphone data as
+        32-bit float PCM (gain-normalized) in [-1,+1] audio data and convert it to signed 16-bit
+        integer linear PCM audio data.
+      */
+      let workletProcessorDataURL = `data:application/javascript;charset=utf8,${encodeURIComponent(`
+        class AudioConvertingProcessor extends AudioWorkletProcessor {
+          constructor() {
+            super();
+          }
+
+          process(inputList, outputList, parameters) {
+            const inputChannel = inputList[0][0];
+            if (inputChannel) {
+              const PCM16iSamples = [];
+              for ( let i = 0; i < inputChannel.length; i++) {
+                let val = Math.round((2**16-1) * (1.0+inputChannel[i])/2) - 2**15;
+                if (val < -(2**15) || val > (2**16-1)) {
+                  throw new Error();
+                }
+                PCM16iSamples.push(val);
+              }
+            /*
+              Use the MessagePort to communicate the converted data between the processor
+              and the AudioWorkletNode.
+            */
+            this.port.postMessage(new Int16Array(PCM16iSamples));
+            }
+
+            return true;
+          }
+        }
+
+        registerProcessor("audio-converting-processor", AudioConvertingProcessor);
+      `)}`;
+      audioCtx = new AudioContext();
+      audioCtx.audioWorklet.addModule(workletProcessorDataURL)
+        .then(() => {
+          processorNode = new AudioWorkletNode(audioCtx, "audio-converting-processor");
+          audioInput = audioCtx.createMediaStreamSource(audioStream);
+          audioInput.connect(processorNode);
+          processorNode.port.onmessage = (e) => {
+            /*
+              Send converted audio from the AudioWorkletProcessor to the ASR Engine once the
+              WebSocket connection is open.
+            */
+           if (websocket.readyState === WebSocket.OPEN) {
+             websocket.send(e.data);
+           }
+          }
+          processorNode.onprocessorerror = (error) => {
+            stopRecording();
+            createNewMessage(
+              "The microphone audio data was not in the expected [-1,+1] range as floating point. "
+              + "Please refer to xkcd.com/2200",
+              ["log-info", "log-info-error"]
+            )
+          }
+        })
+        .catch(() => console.log("Did not create AudioWorkletNode."));
+    }
+
+    function startRecording() {
+      silenceCount = 0;
+      try {
+        /*
+          Set up a WebSocket connection to that will stream microphone data to a Mod9 Engine.
+        */
+        websocket = new WebSocket(uriInput.value);
+        createStreamingAudio();
+        createNewMessage(
+          `WebSocket is connecting to ${uriInput.value}.
+          Partial transcript: ${partialSetting.checked}; Formatted transcript: ${formattedSetting.checked}`,
+          ["log-info"]
+        );
+
+        websocket.onerror = (e) => {
+          createNewMessage(
+            `Failed to connect to ${uriInput.value}. `
+            + "Please make sure that URI is correct or try again later.",
+            ["log-info", "log-info-error"]
+          );
+        }
+
+        websocket.onclose = (e) => {
+          stopRecording();
+          createNewMessage("WebSocket connection is now closed.",
+            ["log-info"]
+          );
+
+          /* Revert the changes made to DOM Elements */
+          formattedSetting.disabled = false;
+          partialSetting.disabled = false;
+          uriInput.disabled = false;
+          settingsContainer.classList.remove("disabled");
+          micBtn.classList.remove("recording");
+          console.log("WebSocket connection is closed.");
+        }
+
+        websocket.onopen = () => {
+          console.log("Websocket connection is open");
+
+          /* Apply changes to the DOM Elements */
+          formattedSetting.disabled = true;
+          partialSetting.disabled = true;
+          uriInput.disabled = true;
+          settingsContainer.classList.add("disabled");
+          transcript.classList.add("recording");
+          micBtn.classList.add("recording");
+
+          isMicOn = true;
+          createNewMessage("WebSocket connection is open. Say something ...",
+            ["log-info"]
+          );
+          if (partialSetting.checked) {
+            createNewMessage("", ["transcript-message"]);
+          }
+
+          // Send initial request options to Mod9 ASR Engine.
+          websocket.send(
+            new Blob([JSON.stringify({
+              'format': 'raw',
+              'encoding': 'pcm_s16le',
+              'resample': true,
+              'rate': audioCtx.sampleRate,
+              'transcript-formatted': formattedSetting.checked,
+              'partial': partialSetting.checked,
+              'transcript-formatted-partial': formattedSetting.checked && partialSetting.checked,
+            })],
+              { type: 'text/plain' }),
+          );
+        }
+
+        websocket.onmessage = async function (e) {
+          /*
+            On each WebSocket response, use the User settings to determine which relevant
+            information to show on the webpage.
+          */
+          let speechResults = await e.data.text();
+          console.log(JSON.parse(speechResults));
+          let asrResults = JSON.parse(speechResults);
+          let text = formattedSetting.checked
+            ? asrResults.transcript_formatted : asrResults.transcript;
+          // Check the results to see if there are any errors.
+          if (asrResults.status === "failed") {
+            createNewMessage(`Error. ${asrResults.error}`, ["log-info", "log-info-error"]);
+          } else if (text) {
+            if (silenceCount && partialSetting.checked) {
+              createNewMessage("", ["transcript-message"]);
+            }
+            silenceCount = 0;
+            if (partialSetting.checked) {
+              topSegment.innerText = text;
+              if (asrResults.final) {
+                createNewMessage("", ["transcript-message"]);
+              }
+            } else {
+              createNewMessage(text, ["transcript-message"]);
+            }
+          } else if (text === "") {
+            silenceCount += 1;
+            if (silenceCount === 1) {
+              createNewMessage("[silence]", ["transcript-message"]);
+            } else if (silenceCount > 1) {
+              topSegment.innerHTML = `[silence] <span class="silence-count">${silenceCount}</span>`;
+            }
+          }
+        }
+      } catch (err) {
+        console.log("Connection could not be made");
+        createNewMessage(
+          "Could not create a WebSocket connection."
+          + " Please make sure that the URI is correct and try again.",
+          ["log-info", "log-info-error"]
+        )
+      }
+    }
+
+    function stopRecording() {
+      /*
+        Close the microphone streaming process and send a final message to the WebSocket server
+        to close.
+        NOTE: This function may be called twice when an unexpected error occurs which is why the
+        state of the WebSocket and streaming process is checked.
+       */
+      if (audioCtx) {
+        if (audioCtx.state !== "closed") {
+          audioCtx.close();
+        }
+      }
+      if (websocket.readyState !== 2 && websocket.readyState !== 3) {
+        websocket.send(new Blob([''], { type: 'text/plain' }));
+      }
+      if (audioStream) {
+        audioStream.getAudioTracks().forEach((track) => track.stop());
+        audioStream = undefined;
+      }
+
+      isMicOn = false;
+    }
+
+    micBtn.addEventListener("click", async () => {
+      try {
+        if (!audioStream) {
+          audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+
+        if (isMicOn) {
+          stopRecording();
+        } else {
+          startRecording();
+        }
+      } catch (e) {
+        changeMessage(
+          welcome,
+          `<span class="log-info-error">The microphone device could not be accessed in this browser.</span>
+          ${window.isSecureContext
+            ? "<br />The browser should have asked for permission. Try reloading this page and grant microphone access when prompted."
+            : "<br />Try serving this page in a secure context (e.g. HTTPS); or override browser settings to allow device access."
+          }`
+        );
+      }
+    });
+  </script>
+
+
+
+</body></html>

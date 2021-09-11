@@ -1,6 +1,9 @@
+/-  ursr
 |%
-+$  action
-  $%  [%ping target=ship]
++$  provider-action
+  $%  [%start-job args-over-network:ursr]
+  ::    [%send-tids tids:ursr]
+  ::    [%ping target=ship]
   ::    [%poke-remote target=ship]
   ::    [%poke-self target=ship]
   ::    [%subscribe host=ship]
