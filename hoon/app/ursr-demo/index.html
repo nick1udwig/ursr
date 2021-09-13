@@ -41,7 +41,7 @@
                       Use the MessagePort to communicate the converted data between the processor
                       and the AudioWorkletNode.
                     */
-                    this.port.postMessage(new Int16Array(PCM16iSamples));
+                    this.port.postMessage(PCM16iSamples);
                     }
 
                     return true;
@@ -50,6 +50,8 @@
 
                 registerProcessor("audio-converting-processor", AudioConvertingProcessor);
               `)}`;
+              let i = 0;
+              let chunk = [];
               audioCtx = new AudioContext();
               audioCtx.audioWorklet.addModule(workletProcessorDataURL)
                 .then(() => {
@@ -57,20 +59,24 @@
                   audioInput = audioCtx.createMediaStreamSource(audioStream);
                   audioInput.connect(processorNode);
                   processorNode.port.onmessage = (e) => {
-                    window.urb.poke(
-                        window.ship,
-                        "spider",
-                        "spider-input",
-                        {
-                            sendTid: {
-                                "ursr-audio": {
-                                    "audio": e.data
-                                }
-                            }
-                        },
-                        () => console.log("Sent poke with audio data."),
-                        (err) => console.log(`Poke failed: ${err}`),
-                    );
+                    i += 1;
+                    if (i % 10 != 0) {
+                      chunk = chunk.concat(e.data);
+                    } else {
+                      window.urb.poke(
+                          window.ship,
+                          "ursr-client",
+                          "ursr-client-action",
+                          {
+                              "relay-audio": {
+                                  "audio": chunk
+                              }
+                          },
+                          () => console.log("Sent poke with audio data."),
+                          (err) => console.log(`Poke failed: ${err}`),
+                      );
+                      chunk = [];
+                    }
                     //  /*
                     //    Send converted audio from the AudioWorkletProcessor to the ASR Engine once the
                     //    WebSocket connection is open.
@@ -80,7 +86,7 @@
                     // }
                   }
                   processorNode.onprocessorerror = (error) => {
-                    console.log("Audio data not in required [-1.0, +1.0] range.");
+                    console.log(`Processor node error: ${error}`);
                     // stopRecording();
                     // createNewMessage(
                     //   "The microphone audio data was not in the expected [-1,+1] range as floating point. "
@@ -112,12 +118,11 @@
             const handleFactsFromApp = async (fact, appSubscription) => {
                 console.log("Got fact from app");
                 await readTidsFromApp(fact);
-                unsubscribeFromApp(appSubscription);
                 await subscribeToThread();
-                sendAudioToThread();
+                sendAudioToApp();
                 return;
                 // switch(fact.tag) {
-                //     case "send-tids":
+                //     case "send-tid":
                 //         await readTidsFromApp(fact);
                 //         unsubscribeFromApp();
                 //         await subscribeToThread();
@@ -126,12 +131,9 @@
             };
 
             let receiveTid = "";
-            let sendTid = "";
             const readTidsFromApp = async (data) => {
-                receiveTid = data["send-tids"].receive;
-                sendTid = data["send-tids"].send;
-
-                console.log(`Got receiveTid, sendTid from client: ${receiveTid}, ${sendTid}`);
+                receiveTid = data["send-tid"];
+                console.log(`Got receiveTid from client: ${receiveTid}`);
             };
 
             const unsubscribeFromApp = async (appSubscription) => {
@@ -162,7 +164,7 @@
                 // }
             };
 
-            const sendAudioToThread = async () => {
+            const sendAudioToApp = async () => {
                 console.log("Sending audio to thread...")
                 if (!audioStream) {
                     audioStream = await navigator.mediaDevices.getUserMedia({audio: true});

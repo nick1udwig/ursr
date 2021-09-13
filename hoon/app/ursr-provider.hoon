@@ -39,7 +39,7 @@
     ~&  >  "got poke"
     ?+    mark  (on-poke:def mark vase)
         %ursr-provider-action
-      ~&  >>>  !<(provider-action:ursr-provider-action vase)
+      :: ~&  >>>  !<(provider-action:ursr-provider-action vase)
       =^  cards  state
       (handle-action:hc !<(provider-action:ursr-provider-action vase))
       [cards this]
@@ -59,11 +59,11 @@
     |=  =path
     ^-  (quip card _this)
     ?+     path  (on-watch:def path)
-        [%mars-path ~]
-        ~&  >  "got subscription from mars"  `this
+        [%provider-to-client ~]
+        ~&  >  "got subscription from client"  `this
         ::
         [%urth-path ~]
-        ~&  >  "got subscription from urth"  `this
+        ~&  >  "got subscription from urth backend"  `this
     ==
   ++  on-leave
     |=  =path
@@ -98,15 +98,22 @@
       %start-job
     =/  client-args=args-over-network:ursr  +.action
     ~&  >  "got %start-job request: {<client-args>}"
-    =/  receive-tid   `@ta`(cat 3 'thread_r_' (scot %uv (sham eny.bowl)))
-    =/  send-tid      `@ta`(cat 3 'thread_s_' (scot %uv (sham eny.bowl)))
-    =/  receive-args  [~ `receive-tid %ursr-provider-receive-from-client !>([src.bowl tids.client-args])]
-    =/  send-args     [~ `send-tid %ursr-provider-send-to-client !>(~)]
+    =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
+    =/  receive-args  [~ `receive-tid %ursr-provider-receive-from-client !>([src.bowl tid.client-args])]
     :_  state
     :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
-        [%pass /thread/[send-tid] %agent [our.bowl %spider] %poke %spider-start !>(send-args)]
-        [%give %fact ~[/urth-path] %ursr-provider-action !>([%start-job [options.client-args [receive-tid send-tid]]])]
+        [%give %fact ~[/urth-path] %ursr-provider-action !>([%start-job [options.client-args receive-tid]])]
     ==
+    ::
+      %relay-reply
+    =/  reply=engine-reply:ursr  +.action
+    ~&  >  "got %relay-reply request: {<reply>}"
+    :_  state
+    :~  [%give %fact ~[/provider-to-client] %engine-reply !>(reply)]
+    ==
+    ::
+      %relay-audio
+    ~&  >  "got unexpected case %relay-audio"  `state
     ::
 ::       %increase-counter
 ::     =.  counter.state  (add step.action counter.state)

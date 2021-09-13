@@ -24,21 +24,23 @@
 =/  m  (strand ,vase)
 ^-  form:m
 ::
+%-  (slog leaf+"ursr-prfc: provider receive from client thread started" ~)
 =/  args=args-provider-to-provider:ursr-sur  !<(args-provider-to-provider:ursr-sur args-vase)
 =/  client-path=path  /client-to-provider
 ::
 ::  Receive subscription from Urth,
 ::
 ;<  urth-path=path  bind:m  take-watch
-::  Subscribe to client send thread.
+%-  (slog leaf+"ursr-prfc: got watch from {<urth-path>}" ~)
+::  Subscribe to client app, which will send audio.
 ::
-;<  ~               bind:m  (watch client-path [client.args %spider] /thread/[send.client-tids.args]/updates)
+;<  ~               bind:m  (watch /from-client [client.args %ursr-client] client-path)
 ::  Pass through Engine reply facts from Urth to client.
 ::
-;<  ~               bind:m  (pass-fact-through:ursr client-path urth-path %raw-pcm-ssixteenle-audio)
+;<  ~               bind:m  (pass-fact-through:ursr /from-client urth-path %ursr-provider-action)
 :: ;<  ~                 bind:m  (pass-through-replies-from-urth client-path urth-path)
 ::  Clean up.
 ::
-;<  ~  bind:m  (take-kick client-path)
+;<  ~  bind:m  (take-kick /from-client)
 ::
 (pure:m !>(~))

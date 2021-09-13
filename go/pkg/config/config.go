@@ -5,13 +5,17 @@ import (
 )
 
 const (
-	UrSrProviderAppName = "ursr-provider"
-	UrSrProviderPath    = "/urth-path"
+	// DefaultEngineUri = "localhost:9900"
+	DefaultEngineUri = "dev.mod9.io:9900"
+
+	UrSrProviderAppName string = "ursr-provider"
+	UrSrProviderPath    string = "/urth-path"
 )
 
 var (
-	Address  = "http://localhost:8080"
-	Passcode = "lapwen-fadtun-lagsyl-fadpex" // wes
+	Address  string = "http://localhost:8080"
+	Passcode string = "lapwen-fadtun-lagsyl-fadpex" // wes
 
-	ShutdownTimeout = 60 * time.Second
+	// EngineDialTimeout      time.Duration = 60 * time.Second
+	ShipSubShutdownTimeout time.Duration = 5 * 60 * time.Second
 )

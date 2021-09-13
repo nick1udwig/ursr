@@ -38,7 +38,7 @@
     ^-  (quip card _this)
     ?+    mark  (on-poke:def mark vase)
         %ursr-client-action
-      ~&  >>>  !<(client-action:ursr-client-action vase)
+      :: ~&  >>>  !<(client-action:ursr-client-action vase)
       =^  cards  state
       (handle-action:hc !<(client-action:ursr-client-action vase))
       [cards this]
@@ -58,8 +58,11 @@
     |=  =path
     ^-  (quip card _this)
     ?+     path  (on-watch:def path)
+        [%client-to-provider ~]
+        ~&  >>  "got subscription from provider"  `this
+        ::
         [%frontend-path ~]
-        ~&  >>  "got subscription from frontend"  `this
+        ~&  >>  "got subscription from urth frontend"  `this
     ==
   ++  on-leave
     |=  =path
@@ -94,18 +97,24 @@
       %start-threads
     =/  client-args=args-frontend-to-client:ursr  +.action
     ~&  >  "got %start-threads request: {<client-args>}"
-    =/  receive-tid   `@ta`(cat 3 'thread_r_' (scot %uv (sham eny.bowl)))
-    =/  send-tid      `@ta`(cat 3 'thread_s_' (scot %uv (sham eny.bowl)))
-    =/  receive-args  [~ `receive-tid %ursr-client-receive-from-provider !>([client-args [receive-tid send-tid]])]
-    =/  send-args     [~ `send-tid %ursr-client-send-to-provider !>(~)]
-    ~&  >  "starting receive {<receive-tid>} and send {<send-tid>}"
+    =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
+    =/  receive-args  [~ `receive-tid %ursr-client-receive-from-provider !>([client-args receive-tid])]
+    ~&  >  "starting receive thread {<receive-tid>}"
     :_  state
     :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
-        [%pass /thread/[send-tid] %agent [our.bowl %spider] %poke %spider-start !>(send-args)]
-        [%give %fact ~[/frontend-path] %ursr-client-action !>([%send-tids [receive-tid send-tid]])]
+        [%give %fact ~[/frontend-path] %ursr-client-action !>([%send-tid receive-tid])]
     ==
-      %send-tids
-    ~&  >>>  "unexpectedly received %send-tids; ignoring"  `state
+    ::
+      %relay-audio
+    =/  samples=raw-pcm-ssixteenle-audio:ursr  +.action
+    ~&  >  "got %relay-audio request"
+    :_  state
+    :~  [%give %fact ~[/client-to-provider] %ursr-provider-action !>([%relay-audio samples])]
+    :: :~  [%give %fact ~[/client-to-provider] %raw-pcm-ssixteenle-audio !>(samples)]
+    ==
+    ::
+      %send-tid
+    ~&  >>>  "unexpectedly received %send-tid; ignoring"  `state
     ::
     ::   %increase-counter
     :: =.  counter.state  (add step.action counter.state)

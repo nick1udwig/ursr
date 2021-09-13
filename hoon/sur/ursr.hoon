@@ -25,28 +25,19 @@
 ::
 +$  args-client-to-client
   $:  fe=args-frontend-to-client
-      client-tids=tids
+      client-tid=@ta
   ==
 :: Used for:
-:: * Client to frontend (tids are client tids;
-::   really we only need send tid for this).
-:: * Provider app to provider receive thread (tids are client tids).
-::
-+$  tids
-  $:  receive=@ta
-      send=@ta
-  ==
-:: Used for:
-:: * Client to provider app (tids are client tids).
-:: * Provider app to middleman (tids are provider tids).
+:: * Client to provider app (tid is client tid).
+:: * Provider app to middleman (tid is provider tid).
 ::
 +$  args-over-network
   $:  =options
-      =tids
+      tid=@ta
   ==
 ::
 +$  args-provider-to-provider
   $:  client=@p
-      client-tids=tids
+      client-tid=@ta
   ==
 --

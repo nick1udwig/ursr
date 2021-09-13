@@ -1,8 +1,9 @@
 /-  ursr
 |%
 +$  client-action
-  $%  [%start-threads args-frontend-to-client:ursr]
-      [%send-tids tids:ursr]
+  $%  [%start-threads =args-frontend-to-client:ursr]
+      [%send-tid tid=@ta]
+      [%relay-audio =raw-pcm-ssixteenle-audio:ursr]
   ::    [%ping target=ship]
   ::    [%poke-remote target=ship]
   ::    [%poke-self target=ship]

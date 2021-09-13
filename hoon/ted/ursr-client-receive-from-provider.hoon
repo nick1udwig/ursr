@@ -1,13 +1,7 @@
 /-  spider, ursr-sur=ursr
 /+  *strandio, ursr
 =,  strand=strand:spider
-=>
-  |%
-  ++  gather-tids
-    |=  =tids:ursr-sur
-    =/  m  (strand ,tids:ursr-sur)
-    (pure:m `tids:ursr-sur`tids)
-::   ::
+:: =>
 ::   ++  pass-through-replies-from-provider
 ::     |=  [frontend-path=path provider-path=path]
 ::     =/  m  (strand ,~)
@@ -23,7 +17,7 @@
 ::         ;<  ~      bind:m  (send-raw-card [%give %fact ~[frontend-path] cage])
 ::         ==
 ::     ==
-  --
+::   --
 ^-  thread:spider
 |=  args-vase=vase
 =/  m  (strand ,vase)
@@ -35,22 +29,18 @@
 ::
 ::  Accept subscription from frontend/app.
 ::
-;<  frontend-path=path           bind:m  take-watch
+;<  frontend-path=path      bind:m  take-watch
 %-  (slog leaf+"ursr-crfp: Got subscription from frontend: {<frontend-path>}" ~)
-::  Start threads on provider ship,
-::   receive provider tids.
+::  Start threads on provider ship.
 ::
-;<  ~                            bind:m  (poke [provider.fe.args %ursr-provider] [%ursr-provider-action !>([%start-job [options.fe.args client-tids.args]])])
-;<  provider-tids-vase=vase      bind:m  (take-poke %provider-tids)
-%-  (slog leaf+"ursr-crfp: Started provider threads: {<provider-tids-vase>}" ~)
-::  Subscribe for replies from provider send thread.
+;<  ~                       bind:m  (poke [provider.fe.args %ursr-provider] [%ursr-provider-action !>([%start-job [options.fe.args client-tid.args]])])
+::  Subscribe for replies from provider app.
 ::
-;<  provider-tids=tids:ursr-sur  bind:m  (gather-tids !<(tids:ursr-sur provider-tids-vase))
-;<  ~                            bind:m  (watch provider-path [provider.fe.args %spider] /thread/[send.provider-tids]/updates)
+;<  ~                       bind:m  (watch /from-provider [provider.fe.args %ursr-provider] provider-path)
 %-  (slog leaf+"ursr-crfp: Subscribed to provider send thread" ~)
 ::  Pass through Engine reply facts from provider to frontend.
 ::
-;<  ~                            bind:m  (pass-fact-through:ursr frontend-path provider-path %engine-reply)
+;<  ~                       bind:m  (pass-fact-through:ursr /from-provider frontend-path %engine-reply)
 :: ;<  ~                        bind:m  (pass-through-replies-from-provider frontend-path provider-path)
 ::  Clean up.
 ::

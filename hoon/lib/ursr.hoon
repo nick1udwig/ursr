@@ -32,20 +32,12 @@
     :~  [%audio [%a (turn audio.raw-pcm-ssixteenle-audio |=(=cord n+(@ta cord)))]]
     ==
   ::
-  ++  tids
-    |=  =tids:ursr
-    ^-  json
-    %-  pairs
-    :~  [%receive %s `cord`receive.tids]
-        [%send %s `cord`send.tids]
-    ==
-  ::
   ++  args-over-network
     |=  =args-over-network:ursr
     ^-  json
     %-  pairs
     :~  [%options (options options.args-over-network)]
-        [%tids (tids tids.args-over-network)]
+        [%tid %s `cord`tid.args-over-network]
     ==
   ::
   ++  args-frontend-to-client
@@ -64,10 +56,15 @@
       %-  pairs
       :~  [%start-threads (args-frontend-to-client +.action)]
       ==
-    ::
-        %send-tids
+      ::
+        %send-tid
       %-  pairs
-      :~  [%send-tids (tids +.action)]
+      :~  [%send-tid %s `cord`+.action]
+      ==
+      ::
+        %relay-audio
+      %-  pairs
+      :~  [%relay-audio (raw-pcm-ssixteenle-audio +.action)]
       ==
     ==
   ::
@@ -78,6 +75,16 @@
         %start-job
       %-  pairs
       :~  [%start-job (args-over-network +.action)]
+      ==
+      ::
+        %relay-audio
+      %-  pairs
+      :~  [%relay-audio (raw-pcm-ssixteenle-audio +.action)]
+      ==
+      ::
+        %relay-reply
+      %-  pairs
+      :~  [%relay-reply (engine-reply +.action)]
       ==
     ==
   --
@@ -116,22 +123,13 @@
     :~  [%audio (ar no)]
     ==
   ::
-  ++  tids
-    |=  jon=json
-    ^-  tids:ursr
-    %.  jon
-    %-  ot
-    :~  [%receive so]
-        [%send so]
-    ==
-  ::
   ++  args-over-network
     |=  jon=json
     ^-  args-over-network:ursr
     %.  jon
     %-  ot
     :~  [%options options]
-        [%tids tids]
+        [%tid so]
     ==
   ::
   ++  args-frontend-to-client
@@ -149,7 +147,8 @@
     %.  jon
     %-  of
     :~  [%start-threads args-frontend-to-client]
-        [%send-tids tids]
+        [%send-tid [%tid so]]
+        [%relay-audio raw-pcm-ssixteenle-audio]
     ==
   ::
   ++  provider-action
@@ -158,6 +157,8 @@
     %.  jon
     %-  of
     :~  [%start-job args-over-network]
+        [%relay-audio raw-pcm-ssixteenle-audio]
+        [%relay-reply engine-reply]
     ==
   --
 ++  pass-fact-through
