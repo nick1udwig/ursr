@@ -191,48 +191,6 @@ func relayAudio(job engine.Job, event *urbit.Event) (err error) {
 	return
 }
 
-// func listenForAndRunJobs(
-// 	ship *urbit.Client,
-// 	newJobChan chan *engine.Job,
-// 	timeout <-chan time.Time,
-// ) (err error) {
-// 	sugar.Debugw("Launching listenForAndRunJobs().")
-// 	// var jobs []engine.Job
-// 	for {
-// 		select {
-// 		case newJob := <-newJobChan:
-// 			sugar.Debugw(
-// 				"listenForAndRunJobs(): Got new job.",
-// 				"newJob", newJob,
-// 			)
-// 			newSubscription, err := subscribe(
-// 				ship,
-// 				"spider",
-// 				fmt.Sprintf("/thread/%v/updates", newJob.ProviderShipTid),
-// 			)
-// 			if err != nil {
-// 				// TODO: Send error to Mars.
-// 				sugar.Errorw(
-// 					"",
-// 					"err", err,
-// 				)
-// 			} else {
-// 				// go monitorSubscriptionEvents(
-// 				// 	ship,
-// 				// 	newSubscription,
-// 				// 	newJob,
-// 				// 	nil,
-// 				// 	nil,
-// 				// )
-// 				go relayReplies(ship, newJob)
-// 				// append(jobs, *newJob)
-// 			}
-// 		case <-timeout:
-// 			return
-// 		}
-// 	}
-// }
-
 func relayReplies(ship *urbit.Client, engineJob *engine.Job) (err error) {
 	reply, err := engineJob.NextReply()
 	if err != nil {
@@ -255,7 +213,7 @@ func relayReplies(ship *urbit.Client, engineJob *engine.Job) (err error) {
 			reply, err = engineJob.NextReply()
 			if err != nil {
 				sugar.Errorw(
-					"",
+					"Failed to get next Engine reply.",
 					"err", err,
 				)
 			}
