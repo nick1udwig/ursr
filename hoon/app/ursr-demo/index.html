@@ -10,6 +10,8 @@
 
         <script src="/~landscape/js/channel.js"></script>
         <script>
+            const rate = 16000;
+            const messagesPerChunk = 10;
             let audioCtx;
             let audioStream;
 
@@ -52,15 +54,21 @@
               `)}`;
               let i = 0;
               let chunk = [];
-              audioCtx = new AudioContext();
+              audioCtx = new AudioContext({sampleRate: rate});
               audioCtx.audioWorklet.addModule(workletProcessorDataURL)
                 .then(() => {
                   processorNode = new AudioWorkletNode(audioCtx, "audio-converting-processor");
                   audioInput = audioCtx.createMediaStreamSource(audioStream);
                   audioInput.connect(processorNode);
                   processorNode.port.onmessage = (e) => {
+                    // Send audio to Mars.
+                    //  Chunk audio to reduce the number of pokes
+                    //  or our ship will get overloaded.
+                    //  Number of messages per chunk is empirically
+                    //  determined and will certainly change as
+                    //  Urbit networking becomes faster.
                     i += 1;
-                    if (i % 10 != 0) {
+                    if (i % messagesPerChunk != 0) {
                       chunk = chunk.concat(e.data);
                     } else {
                       window.urb.poke(
@@ -206,7 +214,7 @@
                                 "command": "recognize",
                                 "format": "raw",
                                 "encoding": "pcm_s16le",
-                                "rate": 16000,
+                                "rate": rate,
                                 "transcript-formatted": true
                             },
                             "provider": provider

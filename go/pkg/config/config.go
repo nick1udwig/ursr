@@ -5,8 +5,7 @@ import (
 )
 
 const (
-	// DefaultEngineUri = "localhost:9900"
-	DefaultEngineUri = "dev.mod9.io:9900"
+	DefaultEngineUri = "localhost:9900"
 
 	UrSrProviderAppName string = "ursr-provider"
 	UrSrProviderPath    string = "/urth-path"

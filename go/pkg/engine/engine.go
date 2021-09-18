@@ -57,6 +57,7 @@ func (e *Job) DialEngine(uri string) (err error) {
 func (e *Job) SendOptions(options Options) (err error) {
 	jsonBytes, err := json.Marshal(&options)
 	if err == nil {
+		jsonBytes = append(jsonBytes, '\n')
 		_, err = e.conn.Write(jsonBytes)
 	}
 	return
