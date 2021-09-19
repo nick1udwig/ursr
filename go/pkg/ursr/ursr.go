@@ -5,8 +5,10 @@ import (
 )
 
 type ProviderAction struct {
-	StartJob   ArgsOverNetwork `json:"start-job,omitempty"`
-	RelayAudio RawPcm16Le      `json:"relay-audio,omitempty"`
+	AudioDone  bool                    `json:"audio-done"`
+	RelayAudio RawPcm16Le              `json:"relay-audio"`
+	RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
+	StartJob   ArgsOverNetwork         `json:"start-job"`
 }
 
 type ArgsOverNetwork struct {

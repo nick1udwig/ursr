@@ -5,6 +5,8 @@ import (
 )
 
 const (
+	AudioDoneSignal = "END-OF-FILE"
+
 	DefaultEngineUri = "localhost:9900"
 
 	UrSrProviderAppName string = "ursr-provider"
@@ -16,5 +18,5 @@ var (
 	Passcode string = "lapwen-fadtun-lagsyl-fadpex" // wes
 
 	// EngineDialTimeout      time.Duration = 60 * time.Second
-	ShipSubShutdownTimeout time.Duration = 5 * 60 * time.Second
+	ShipSubShutdownTimeout time.Duration = 60 * time.Second
 )

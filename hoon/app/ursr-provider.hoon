@@ -1,5 +1,5 @@
-/-  ursr, ursr-provider-action
-/+  default-agent
+/-  ursr
+/+  default-agent, ursr-lib=ursr
 |%
 +$  versioned-state
     $%  state-zero
@@ -37,11 +37,12 @@
     |=  [=mark =vase]
     ^-  (quip card _this)
     ~&  >  "got poke"
+    ~&  >  "got poke with mark {<mark>} and vase {<vase>}"
     ?+    mark  (on-poke:def mark vase)
         %ursr-provider-action
-      :: ~&  >>>  !<(provider-action:ursr-provider-action vase)
+      ~&  >>>  !<(provider-action:ursr vase)
       =^  cards  state
-      (handle-action:hc !<(provider-action:ursr-provider-action vase))
+      (handle-action:hc !<(provider-action:ursr vase))
       [cards this]
     ::
         %noun
@@ -92,7 +93,7 @@
 :: start helper core
 |_  bowl=bowl:gall
 ++  handle-action
-  |=  action=provider-action:ursr-provider-action
+  |=  action=provider-action:ursr
   ^-  (quip card _state)
   ?-    -.action
       %start-job
@@ -106,42 +107,14 @@
     ==
     ::
       %relay-reply
-    =/  reply=engine-reply:ursr  +.action
-    ~&  >  "got %relay-reply request: {<reply>}"
+    :: =/  reply=engine-reply:ursr  +.action
+    ~&  >  "got %relay-reply request: {<+.action>}"
     :_  state
-    :~  [%give %fact ~[/provider-to-client] %engine-reply !>(reply)]
+    :~  [%give %fact ~[/provider-to-client] %ursr-provider-action !>(action)]
     ==
     ::
       %relay-audio
     ~&  >  "got unexpected case %relay-audio"  `state
     ::
-::       %increase-counter
-::     =.  counter.state  (add step.action counter.state)
-::     :_  state
-::     ~[[%give %fact ~[/counter] [%atom !>(counter.state)]]]
-::     ::
-::       %poke-remote
-::     :_  state
-::     ~[[%pass /poke-wire %agent [target.action %ursr-provider] %poke %noun !>([%receive-poke 99])]]
-::     ::
-::       %poke-self
-::     :_  state
-::     ~[[%pass /poke-wire %agent [target.action %ursr-provider] %poke %noun !>(%poke-self)]]
-::     ::
-::       %subscribe
-::     :_  state
-::     ~[[%pass /counter/(scot %p host.action) %agent [host.action %ursr-provider] %watch /counter]]
-::     ::
-::       %leave
-::     :_  state
-::     ~[[%pass /counter/(scot %p host.action) %agent [host.action %ursr-provider] %leave ~]]
-::     ::
-::       %kick
-::     :_  state
-::     ~[[%give %kick paths.action `subscriber.action]]
-::     ::
-::       %bad-path
-::     :_  state
-::     ~[[%pass /bad-path/(scot %p host.action) %agent [host.action %ursr-provider] %watch /bad-path]]
   ==
 --

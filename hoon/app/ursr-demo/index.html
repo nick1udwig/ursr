@@ -6,7 +6,8 @@
         <input type="text" id="code" name="code" placeholder="Client ship code (e.g. 'ropnys-batwyd-nossyt-mapwet')" />
         <br /><br/ >
 
-        <button id="btn">Send</button>
+        <button id="sendBtn">Send</button>
+        <button id="stopBtn">Stop</button>
 
         <script src="/~landscape/js/channel.js"></script>
         <script>
@@ -80,7 +81,7 @@
                                   "audio": chunk
                               }
                           },
-                          () => console.log("Sent poke with audio data."),
+                          () => { if (i % messagesPerChunk * messagesPerChunk == 0) { return console.log("Sent poke with audio data."); } },
                           (err) => console.log(`Poke failed: ${err}`),
                       );
                       chunk = [];
@@ -105,6 +106,33 @@
                 })
                 .catch(() => console.log("Did not create AudioWorkletNode."));
             }
+
+            function stopRecording() {
+              /*
+                Close the microphone streaming process and send a final message to Mars
+                to close.
+               */
+              if (audioCtx) {
+                if (audioCtx.state !== "closed") {
+                  audioCtx.close();
+                }
+              }
+              window.urb.poke(
+                  window.ship,
+                  "ursr-client",
+                  "ursr-client-action",
+                  {
+                      "audio-done": true
+                  },
+                  () => console.log("Sent poke to signal audio done sending."),
+                  (err) => console.log(`Poke failed: ${err}`),
+              );
+              if (audioStream) {
+                audioStream.getAudioTracks().forEach((track) => track.stop());
+                audioStream = undefined;
+              }
+            }
+
 
             const login =  async (pass) => {
                 let loginRes = await fetch('/~/login', {
@@ -162,14 +190,8 @@
             };
 
             const handleFactsFromThread = async (fact) => {
-                console.log(`Got Engine reply: ${fact["engine-reply"]["transcript-formatted"]}.`)
+                console.log(`Got Engine reply: ${JSON.stringify(fact)}.`)
                 return;
-                // console.log("Got fact from thread");
-                // switch(fact.tag) {
-                //     case "engine-reply":
-                //         console.log(`Got Engine reply: ${fact["engine-reply"].transcript}.`)
-                //         return;
-                // }
             };
 
             const sendAudioToApp = async () => {
@@ -182,9 +204,14 @@
 
 
             window.urb = new Channel();
-            let button = document.getElementById("btn");
+            let sendButton = document.getElementById("sendBtn");
+            let stopButton = document.getElementById("stopBtn");
 
-            button.addEventListener("click", async () => {
+            stopButton.addEventListener("click", async () => {
+                stopRecording();
+            });
+
+            sendButton.addEventListener("click", async () => {
                 let provider = document.getElementById("provider").value;
                 if (provider == "") {
                     provider = "~wes";

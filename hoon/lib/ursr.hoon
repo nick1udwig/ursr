@@ -1,4 +1,4 @@
-/-  spider, ursr, ursr-client-action, ursr-provider-action
+/-  spider, ursr
 /+  strandio
 |%
 ++  enjs
@@ -49,7 +49,7 @@
     ==
   ::
   ++  client-action
-    |=  action=client-action:ursr-client-action
+    |=  action=client-action:ursr
     ^-  json
     ?-  -.action
         %start-threads
@@ -66,10 +66,15 @@
       %-  pairs
       :~  [%relay-audio (raw-pcm-ssixteenle-audio +.action)]
       ==
+      ::
+        %audio-done
+      %-  pairs
+      :~  [%audio-done %b +.action]
+      ==
     ==
   ::
   ++  provider-action
-    |=  action=provider-action:ursr-provider-action
+    |=  action=provider-action:ursr
     ^-  json
     ?-  -.action
         %start-job
@@ -143,17 +148,18 @@
   ::
   ++  client-action
     |=  jon=json
-    ^-  client-action:ursr-client-action
+    ^-  client-action:ursr
     %.  jon
     %-  of
     :~  [%start-threads args-frontend-to-client]
         [%send-tid [%tid so]]
         [%relay-audio raw-pcm-ssixteenle-audio]
+        [%audio-done bo]
     ==
   ::
   ++  provider-action
     |=  jon=json
-    ^-  provider-action:ursr-provider-action
+    ^-  provider-action:ursr
     %.  jon
     %-  of
     :~  [%start-job args-over-network]
@@ -173,6 +179,7 @@
       ::   ;<  ~    bind:m  (flog-text "received unexpected fact")
       ::   ::
       ::   expected-mark
+      :: %-  (slog leaf+"ursr-ted: relaying {<p.cage>}" ~)
       ;<  ~      bind:m  (send-raw-card:strandio [%give %fact ~[send-path] cage])
       :: ==
       (pure:m ~)

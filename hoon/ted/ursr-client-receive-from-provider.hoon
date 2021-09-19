@@ -1,5 +1,5 @@
-/-  spider, ursr-sur=ursr
-/+  *strandio, ursr
+/-  spider, ursr
+/+  *strandio, ursr-lib=ursr
 =,  strand=strand:spider
 :: =>
 ::   ++  pass-through-replies-from-provider
@@ -24,7 +24,7 @@
 ^-  form:m
 ::
 %-  (slog leaf+"ursr-crfp: client receive from provider thread started" ~)
-=/  args=args-client-to-client:ursr-sur  !<(args-client-to-client:ursr-sur args-vase)
+=/  args=args-client-to-client:ursr  !<(args-client-to-client:ursr args-vase)
 =/  provider-path=path  /provider-to-client
 ::
 ::  Accept subscription from frontend/app.
@@ -40,7 +40,7 @@
 %-  (slog leaf+"ursr-crfp: Subscribed to provider send thread" ~)
 ::  Pass through Engine reply facts from provider to frontend.
 ::
-;<  ~                       bind:m  (pass-fact-through:ursr /from-provider frontend-path %engine-reply)
+;<  ~                       bind:m  (pass-fact-through:ursr-lib /from-provider frontend-path %ursr-provider-action)
 :: ;<  ~                        bind:m  (pass-through-replies-from-provider frontend-path provider-path)
 ::  Clean up.
 ::

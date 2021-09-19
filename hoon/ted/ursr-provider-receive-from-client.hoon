@@ -1,5 +1,5 @@
-/-  spider, ursr-sur=ursr
-/+  *strandio, ursr
+/-  spider, ursr
+/+  *strandio, ursr-lib=ursr
 =,  strand=strand:spider
 :: =>
 ::   |%
@@ -25,7 +25,7 @@
 ^-  form:m
 ::
 %-  (slog leaf+"ursr-prfc: provider receive from client thread started" ~)
-=/  args=args-provider-to-provider:ursr-sur  !<(args-provider-to-provider:ursr-sur args-vase)
+=/  args=args-provider-to-provider:ursr  !<(args-provider-to-provider:ursr args-vase)
 =/  client-path=path  /client-to-provider
 ::
 ::  Receive subscription from Urth,
@@ -37,7 +37,7 @@
 ;<  ~               bind:m  (watch /from-client [client.args %ursr-client] client-path)
 ::  Pass through Engine reply facts from Urth to client.
 ::
-;<  ~               bind:m  (pass-fact-through:ursr /from-client urth-path %ursr-provider-action)
+;<  ~               bind:m  (pass-fact-through:ursr-lib /from-client urth-path %ursr-provider-action)
 :: ;<  ~                 bind:m  (pass-through-replies-from-urth client-path urth-path)
 ::  Clean up.
 ::

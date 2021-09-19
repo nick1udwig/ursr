@@ -1,4 +1,4 @@
-/-  ursr, ursr-client-action
+/-  ursr
 /+  default-agent
 |%
 +$  versioned-state
@@ -38,9 +38,9 @@
     ^-  (quip card _this)
     ?+    mark  (on-poke:def mark vase)
         %ursr-client-action
-      :: ~&  >>>  !<(client-action:ursr-client-action vase)
+      :: ~&  >>>  !<(client-action:ursr vase)
       =^  cards  state
-      (handle-action:hc !<(client-action:ursr-client-action vase))
+      (handle-action:hc !<(client-action:ursr vase))
       [cards this]
     ::
         %noun
@@ -91,7 +91,7 @@
 ::  start helper core
 |_  bowl=bowl:gall
 ++  handle-action
-  |=  action=client-action:ursr-client-action
+  |=  action=client-action:ursr
   ^-  (quip card _state)
   ?-    -.action
       %start-threads
@@ -107,42 +107,19 @@
     ::
       %relay-audio
     =/  samples=raw-pcm-ssixteenle-audio:ursr  +.action
-    ~&  >  "got %relay-audio request"
+    :: ~&  >  "got %relay-audio request"
     :_  state
     :~  [%give %fact ~[/client-to-provider] %ursr-provider-action !>([%relay-audio samples])]
     :: :~  [%give %fact ~[/client-to-provider] %raw-pcm-ssixteenle-audio !>(samples)]
     ==
     ::
+      %audio-done
+    ~&  >  "got %audio-done"
+    :_  state
+    :~  [%give %fact ~[/client-to-provider] %ursr-client-action !>(action)]
+    ==
+    ::
       %send-tid
     ~&  >>>  "unexpectedly received %send-tid; ignoring"  `state
-    ::
-    ::   %increase-counter
-    :: =.  counter.state  (add step.action counter.state)
-    :: :_  state
-    :: ~[[%give %fact ~[/counter] [%atom !>(counter.state)]]]
-    :: ::
-    ::   %poke-remote
-    :: :_  state
-    :: ~[[%pass /poke-wire %agent [target.action %ursr-client] %poke %noun !>([%receive-poke 99])]]
-    :: ::
-    ::   %poke-self
-    :: :_  state
-    :: ~[[%pass /poke-wire %agent [target.action %ursr-client] %poke %noun !>(%poke-self)]]
-    :: ::
-    ::   %subscribe
-    :: :_  state
-    :: ~[[%pass /counter/(scot %p host.action) %agent [host.action %ursr-client] %watch /counter]]
-    :: ::
-    ::   %leave
-    :: :_  state
-    :: ~[[%pass /counter/(scot %p host.action) %agent [host.action %ursr-client] %leave ~]]
-    :: ::
-    ::   %kick
-    :: :_  state
-    :: ~[[%give %kick paths.action `subscriber.action]]
-    :: ::
-    ::   %bad-path
-    :: :_  state
-    :: ~[[%pass /bad-path/(scot %p host.action) %agent [host.action %ursr-client] %watch /bad-path]]
   ==
 --

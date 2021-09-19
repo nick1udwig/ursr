@@ -79,8 +79,8 @@ func monitorSubscriptionEvents(
 			case "diff":
 				if event.ID == appSubscription.ID {
 					go startNewJob(ship, event, subscriptionsToJobs)
-				} else if job, ok := subscriptionsToJobs[event.ID]; ok {
-					go relayAudio(job, event)
+				} else if _, ok := subscriptionsToJobs[event.ID]; ok {
+					go relayAudio(event, subscriptionsToJobs)
 				}
 			default:
 			}
@@ -148,11 +148,12 @@ func startNewJob(ship *urbit.Client, event *urbit.Event, subscriptionsToJobs map
 		"path", fmt.Sprintf("/thread/%v/updates", newJob.ProviderShipTid),
 	)
 	subscriptionsToJobs[newSubscription.ID] = *newJob
-	go relayReplies(ship, newJob)
+	go relayReplies(ship, newJob, newSubscription.ID)
 	return
 }
 
-func relayAudio(job engine.Job, event *urbit.Event) (err error) {
+func relayAudio(event *urbit.Event, subscriptionsToJobs map[uint64]engine.Job) (err error) {
+	job := subscriptionsToJobs[event.ID]
 	action := &ursr.ProviderAction{}
 	err = json.Unmarshal(event.Data, action)
 	if err != nil {
@@ -164,6 +165,24 @@ func relayAudio(job engine.Job, event *urbit.Event) (err error) {
 		)
 		return
 	}
+	if action.AudioDone {
+		sugar.Debugw(
+			"Got audio done signal for job.",
+			"subscriptionId", event.ID,
+		)
+		delete(subscriptionsToJobs, event.ID)
+		err = job.SendAudioBytes([]byte(config.AudioDoneSignal))
+		if err != nil {
+			sugar.Errorw(
+				"Trouble sending Engine EOF.",
+				"subscriptionId", event.ID,
+				"job", job,
+				"err", err,
+			)
+		}
+		return
+	}
+
 	samples := action.RelayAudio
 
 	// https://stackoverflow.com/a/27815101
@@ -191,32 +210,87 @@ func relayAudio(job engine.Job, event *urbit.Event) (err error) {
 	return
 }
 
-func relayReplies(ship *urbit.Client, engineJob *engine.Job) (err error) {
-	reply, err := engineJob.NextReply()
+func relayReplies(ship *urbit.Client, job *engine.Job, subscriptionId uint64) (err error) {
+	reply, err := job.NextReply()
 	if err != nil {
 		sugar.Errorw(
 			"Trouble reading/parsing reply from Engine.",
+			"subscriptionId", subscriptionId,
 			"err", err,
 		)
 	} else {
 		for reply.Status != "completed" && reply.Status != "failed" {
 			sugar.Debugw(
 				"Got Engine reply.",
+				"subscriptionId", subscriptionId,
 				"reply", *reply,
 			)
 			if reply.Transcript != "" {
-				replyBytes, err := json.Marshal(reply)
+				// replyAction := &ursr.ProviderAction{RelayReply: *reply}
+				replyAction := &struct {
+					RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
+				}{RelayReply: engine.ReplyToUrbitFormat(reply)}
+
+				replyBytes, err := json.Marshal(replyAction)
 				if err == nil {
-					ship.Poke(config.UrSrProviderAppName, replyBytes)
+					pokeResult := ship.PokeShipMark(
+						ship.Name(),
+						config.UrSrProviderAppName,
+						"ursr-provider-action",
+						replyBytes,
+					)
+					err = pokeResult.Wait()
+					if err != nil {
+						sugar.Errorw(
+							"Failed to relay Engine reply to ship.",
+							"subscriptionId", subscriptionId,
+							"err", err,
+							"ship", ship.Name(),
+							"app", config.UrSrProviderAppName,
+							"mark", "ursr-provider-action",
+							"replyAction", replyAction,
+							"replyBytes", replyBytes,
+						)
+					} else {
+						sugar.Debugw(
+							"Sent poke to relay Engine reply to ship.",
+							"subscriptionId", subscriptionId,
+							"ship", ship.Name(),
+							"app", config.UrSrProviderAppName,
+							"mark", "ursr-provider-action",
+							"replyAction", replyAction,
+							"replyBytes", replyBytes,
+						)
+					}
+				} else {
+					sugar.Errorw(
+						"Failed to marshal reply to ship.",
+						"subscriptionId", subscriptionId,
+						"err", err,
+						"ship", ship.Name(),
+						"app", config.UrSrProviderAppName,
+						"mark", "ursr-provider-action",
+						"replyAction", replyAction,
+					)
 				}
 			}
-			reply, err = engineJob.NextReply()
+			reply, err = job.NextReply()
 			if err != nil {
 				sugar.Errorw(
 					"Failed to get next Engine reply.",
+					"subscriptionId", subscriptionId,
 					"err", err,
 				)
 			}
+		}
+		err = job.Close()
+		if err != nil {
+			sugar.Errorw(
+				"Trouble closing Engine connection.",
+				"subscriptionId", subscriptionId,
+				"job", job,
+				"err", err,
+			)
 		}
 	}
 	return

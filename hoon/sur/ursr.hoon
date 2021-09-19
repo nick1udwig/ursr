@@ -40,4 +40,17 @@
   $:  client=@p
       client-tid=@ta
   ==
+::
++$  client-action
+  $%  [%start-threads =args-frontend-to-client]
+      [%send-tid tid=@ta]
+      [%relay-audio =raw-pcm-ssixteenle-audio]
+      [%audio-done done=?]
+  ==
+::
++$  provider-action
+  $%  [%start-job =args-over-network]
+      [%relay-audio =raw-pcm-ssixteenle-audio]
+      [%relay-reply =engine-reply]
+  ==
 --

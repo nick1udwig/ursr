@@ -18,16 +18,26 @@ type Options struct {
 
 // Union of fields in replies:
 //  not every reply has these fields.
-type Reply struct {
+type ReplyEngineFormat struct {
 	AsrModel            string        `json:"asr_model,omitempty"`
 	Engine              EngineVersion `json:"engine,omitempty"`
-	Final               bool          `json:"final,omitempty"`
-	ResultIndex         uint          `json:"result_index,omitempty"`
+	Final               bool          `json:"final"`
+	ResultIndex         uint          `json:"result_index"`
 	Status              string        `json:"status"`
 	Transcript          string        `json:"transcript,omitempty"`
 	TranscriptFormatted string        `json:"transcript_formatted,omitempty"`
 	Uuid                string        `json:"uuid,omitempty"`
 	Warning             string        `json:"warning,omitempty"`
+}
+
+// Union of fields in replies:
+//  not every reply has these fields.
+type ReplyUrbitFormat struct {
+	Final               bool   `json:"final"`
+	ResultIndex         uint   `json:"result-index"`
+	Status              string `json:"status"`
+	Transcript          string `json:"transcript,omitempty"`
+	TranscriptFormatted string `json:"transcript-formatted,omitempty"`
 }
 
 type EngineVersion struct {
@@ -72,11 +82,26 @@ func (e *Job) NextReplyBytes() ([]byte, error) {
 	return e.sockReader.ReadSlice('\n')
 }
 
-func (e *Job) NextReply() (reply *Reply, err error) {
+func (e *Job) NextReply() (reply *ReplyEngineFormat, err error) {
 	replyBytes, err := e.NextReplyBytes()
 	if err == nil {
-		reply = &Reply{}
+		reply = &ReplyEngineFormat{}
 		err = json.Unmarshal(replyBytes, reply)
+	}
+	return
+}
+
+func (e *Job) Close() error {
+	return e.conn.Close()
+}
+
+func ReplyToUrbitFormat(r *ReplyEngineFormat) (replyUrbit ReplyUrbitFormat) {
+	replyUrbit = ReplyUrbitFormat{
+		Final:               r.Final,
+		ResultIndex:         r.ResultIndex,
+		Status:              r.Status,
+		Transcript:          r.Transcript,
+		TranscriptFormatted: r.TranscriptFormatted,
 	}
 	return
 }
