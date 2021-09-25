@@ -17,138 +17,138 @@
             let audioStream;
 
             function createStreamingAudio() {
-              /*
-                Create the audio processing interface. Use a Data URL to embed a small JS file containing a
-                custom AudioWorkletProcessor. The custom processor will take the user's microphone data as
-                32-bit float PCM (gain-normalized) in [-1,+1] audio data and convert it to signed 16-bit
-                integer linear PCM audio data.
-              */
-              let workletProcessorDataURL = `data:application/javascript;charset=utf8,${encodeURIComponent(`
-                class AudioConvertingProcessor extends AudioWorkletProcessor {
-                  constructor() {
-                    super();
-                  }
-
-                  process(inputList, outputList, parameters) {
-                    const inputChannel = inputList[0][0];
-                    if (inputChannel) {
-                      const PCM16iSamples = [];
-                      for ( let i = 0; i < inputChannel.length; i++) {
-                        let val = Math.round((2**16-1) * (1.0+inputChannel[i])/2) - 2**15;
-                        if (val < -(2**15) || val > (2**16-1)) {
-                          throw new Error();
+                /*
+                    Create the audio processing interface. Use a Data URL to embed a small JS file containing a
+                    custom AudioWorkletProcessor. The custom processor will take the user's microphone data as
+                    32-bit float PCM (gain-normalized) in [-1,+1] audio data and convert it to signed 16-bit
+                    integer linear PCM audio data.
+                */
+                let workletProcessorDataURL = `data:application/javascript;charset=utf8,${encodeURIComponent(`
+                    class AudioConvertingProcessor extends AudioWorkletProcessor {
+                        constructor() {
+                            super();
                         }
-                        PCM16iSamples.push(val);
-                      }
-                    /*
-                      Use the MessagePort to communicate the converted data between the processor
-                      and the AudioWorkletNode.
-                    */
-                    this.port.postMessage(PCM16iSamples);
-                    }
 
-                    return true;
-                  }
-                }
-
-                registerProcessor("audio-converting-processor", AudioConvertingProcessor);
-              `)}`;
-              let i = 0;
-              let chunk = [];
-              let bytesPerChunk = [];
-              let int16sSent;
-              let bytesSent;
-              let meanBytesSent;
-              let meanKiloBytesPerChunk;
-              let t1 = performance.now();
-              audioCtx = new AudioContext({sampleRate: rate});
-              audioCtx.audioWorklet.addModule(workletProcessorDataURL)
-                .then(() => {
-                  processorNode = new AudioWorkletNode(audioCtx, "audio-converting-processor");
-                  audioInput = audioCtx.createMediaStreamSource(audioStream);
-                  audioInput.connect(processorNode);
-                  processorNode.port.onmessage = (e) => {
-                    // Send audio to Mars.
-                    //  Chunk audio to reduce the number of pokes
-                    //  or our ship will get overloaded.
-                    //  Number of messages per chunk is empirically
-                    //  determined and will certainly change as
-                    //  Urbit networking becomes faster.
-                    i += 1;
-                    chunk = chunk.concat(e.data);
-                    if (i % messagesPerChunk == 0) {
-                      if (chunk.length > 0) {
-                        bytesPerChunk.push(chunk.length);
-                        if (i % messagesPerChunk ** 3 == 0) {
-                            t2 = performance.now();
-                            if (bytesPerChunk.length > 0) {
-                                int16sSent = bytesPerChunk.reduce((acc, x) => acc + x, 0);
-                                bytesSent = int16sSent * 2;
-                                meanBytesSent = bytesSent / bytesPerChunk.length;
-                            } else {
-                                int16sSent = chunk.length;
-                                bytesSent = int16sSent * 2;
-                                meanBytesSent = bytesSent;
-                            }
-                            meanKiloBytesPerChunk = meanBytesSent / 1000;
-                            kiloBytesPerSecond = bytesSent / (t2 - t1);  // bytes / ms == kB / s
-                            console.log(`audio pokes (poke ${i / messagesPerChunk}; ${int16sSent} in last ${messagesPerChunk ** 2} pokes) (avg ${meanKiloBytesPerChunk}kB; ${kiloBytesPerSecond}kB/s).`);
-                            bytesPerChunk = []; 
-                            t1 = performance.now();
-                        }
-                        window.urb.poke(
-                            window.ship,
-                            "ursr-client",
-                            "ursr-client-action",
-                            {
-                                "relay-audio": {
-                                    "audio": chunk
+                        process(inputList, outputList, parameters) {
+                            const inputChannel = inputList[0][0];
+                            if (inputChannel) {
+                                const PCM16iSamples = [];
+                                for ( let i = 0; i < inputChannel.length; i++) {
+                                    let val = Math.round((2**16-1) * (1.0+inputChannel[i])/2) - 2**15;
+                                    if (val < -(2**15) || val > (2**16-1)) {
+                                        throw new Error();
+                                    }
+                                    PCM16iSamples.push(val);
                                 }
-                            },
-                            () => { if (i % messagesPerChunk * messagesPerChunk == 0) { return console.log("Sent poke with audio data."); } },
-                            (err) => console.log(`Poke failed: ${err}`),
-                        );
-                        chunk = [];
-                      }
+                            /*
+                                Use the MessagePort to communicate the converted data between the processor
+                                and the AudioWorkletNode.
+                            */
+                            this.port.postMessage(PCM16iSamples);
+                            }
+
+                            return true;
+                        }
                     }
-                  }
-                  processorNode.onprocessorerror = (error) => {
-                    console.log(`Processor node error: ${error}`);
-                    // stopRecording();
-                    // createNewMessage(
-                    //   "The microphone audio data was not in the expected [-1,+1] range as floating point. "
-                    //   + "Please refer to xkcd.com/2200",
-                    //   ["log-info", "log-info-error"]
-                    // )
-                  }
-                })
-                .catch(() => console.log("Did not create AudioWorkletNode."));
+
+                    registerProcessor("audio-converting-processor", AudioConvertingProcessor);
+                `)}`;
+                let i = 0;
+                let chunk = [];
+                let bytesPerChunk = [];
+                let int16sSent;
+                let bytesSent;
+                let meanBytesSent;
+                let meanKiloBytesPerChunk;
+                let t1 = performance.now();
+                audioCtx = new AudioContext({sampleRate: rate});
+                audioCtx.audioWorklet.addModule(workletProcessorDataURL)
+                    .then(() => {
+                        processorNode = new AudioWorkletNode(audioCtx, "audio-converting-processor");
+                        audioInput = audioCtx.createMediaStreamSource(audioStream);
+                        audioInput.connect(processorNode);
+                        processorNode.port.onmessage = (e) => {
+                            // Send audio to Mars.
+                            //  Chunk audio to reduce the number of pokes
+                            //  or our ship will get overloaded.
+                            //  Number of messages per chunk is empirically
+                            //  determined and will certainly change as
+                            //  Urbit networking becomes faster.
+                            i += 1;
+                            chunk = chunk.concat(e.data);
+                            if (i % messagesPerChunk == 0) {
+                                if (chunk.length > 0) {
+                                    bytesPerChunk.push(chunk.length);
+                                    if (i % messagesPerChunk ** 3 == 0) {
+                                        t2 = performance.now();
+                                        if (bytesPerChunk.length > 0) {
+                                            int16sSent = bytesPerChunk.reduce((acc, x) => acc + x, 0);
+                                            bytesSent = int16sSent * 2;
+                                            meanBytesSent = bytesSent / bytesPerChunk.length;
+                                        } else {
+                                            int16sSent = chunk.length;
+                                            bytesSent = int16sSent * 2;
+                                            meanBytesSent = bytesSent;
+                                        }
+                                        meanKiloBytesPerChunk = meanBytesSent / 1000;
+                                        kiloBytesPerSecond = bytesSent / (t2 - t1);  // bytes / ms == kB / s
+                                        console.log(`audio pokes (poke ${i / messagesPerChunk}; ${int16sSent} in last ${messagesPerChunk ** 2} pokes) (avg ${meanKiloBytesPerChunk}kB; ${kiloBytesPerSecond}kB/s).`);
+                                        bytesPerChunk = [];
+                                        t1 = performance.now();
+                                    }
+                                    window.urb.poke(
+                                        window.ship,
+                                        "ursr-client",
+                                        "ursr-action",
+                                        {
+                                            "relay-audio": {
+                                                "audio": chunk
+                                            }
+                                        },
+                                        () => { if (i % messagesPerChunk * messagesPerChunk == 0) { return console.log("Sent poke with audio data."); } },
+                                        (err) => console.log(`Poke failed: ${err}`),
+                                    );
+                                    chunk = [];
+                                }
+                            }
+                        }
+                        processorNode.onprocessorerror = (error) => {
+                          console.log(`Processor node error: ${error}`);
+                          // stopRecording();
+                          // createNewMessage(
+                          //   "The microphone audio data was not in the expected [-1,+1] range as floating point. "
+                          //   + "Please refer to xkcd.com/2200",
+                          //   ["log-info", "log-info-error"]
+                          // )
+                        }
+                    })
+                    .catch(() => console.log("Did not create AudioWorkletNode."));
             }
 
             function stopRecording() {
-              /*
-                Close the microphone streaming process and send a final message to Mars
-                to close.
-               */
-              if (audioCtx) {
-                if (audioCtx.state !== "closed") {
-                  audioCtx.close();
+                /*
+                    Close the microphone streaming process and send a final message to Mars
+                    to close.
+                 */
+                if (audioCtx) {
+                    if (audioCtx.state !== "closed") {
+                        audioCtx.close();
+                    }
                 }
-              }
-              window.urb.poke(
-                  window.ship,
-                  "ursr-client",
-                  "ursr-client-action",
-                  {
-                      "audio-done": true
-                  },
-                  () => console.log("Sent poke to signal audio done sending."),
-                  (err) => console.log(`Poke failed: ${err}`),
-              );
-              if (audioStream) {
-                audioStream.getAudioTracks().forEach((track) => track.stop());
-                audioStream = undefined;
-              }
+                window.urb.poke(
+                    window.ship,
+                    "ursr-client",
+                    "ursr-action",
+                    {
+                        "audio-done": true
+                    },
+                    () => console.log("Sent poke to signal audio done sending."),
+                    (err) => console.log(`Poke failed: ${err}`),
+                );
+                if (audioStream) {
+                    audioStream.getAudioTracks().forEach((track) => track.stop());
+                    audioStream = undefined;
+                }
             }
 
 
@@ -252,9 +252,9 @@
                 window.urb.poke(
                     window.ship,
                     "ursr-client",
-                    "ursr-client-action",
+                    "ursr-action",
                     {
-                        "start-threads": {
+                        "client-start-threads": {
                             "options": {
                                 "command": "recognize",
                                 "format": "raw",
