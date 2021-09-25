@@ -55,6 +55,12 @@
               `)}`;
               let i = 0;
               let chunk = [];
+              let bytesPerChunk = [];
+              let int16sSent;
+              let bytesSent;
+              let meanBytesSent;
+              let meanKiloBytesPerChunk;
+              let t1 = performance.now();
               audioCtx = new AudioContext({sampleRate: rate});
               audioCtx.audioWorklet.addModule(workletProcessorDataURL)
                 .then(() => {
@@ -69,30 +75,42 @@
                     //  determined and will certainly change as
                     //  Urbit networking becomes faster.
                     i += 1;
-                    if (i % messagesPerChunk != 0) {
-                      chunk = chunk.concat(e.data);
-                    } else {
-                      window.urb.poke(
-                          window.ship,
-                          "ursr-client",
-                          "ursr-client-action",
-                          {
-                              "relay-audio": {
-                                  "audio": chunk
-                              }
-                          },
-                          () => { if (i % messagesPerChunk * messagesPerChunk == 0) { return console.log("Sent poke with audio data."); } },
-                          (err) => console.log(`Poke failed: ${err}`),
-                      );
-                      chunk = [];
+                    chunk = chunk.concat(e.data);
+                    if (i % messagesPerChunk == 0) {
+                      if (chunk.length > 0) {
+                        bytesPerChunk.push(chunk.length);
+                        if (i % messagesPerChunk ** 3 == 0) {
+                            t2 = performance.now();
+                            if (bytesPerChunk.length > 0) {
+                                int16sSent = bytesPerChunk.reduce((acc, x) => acc + x, 0);
+                                bytesSent = int16sSent * 2;
+                                meanBytesSent = bytesSent / bytesPerChunk.length;
+                            } else {
+                                int16sSent = chunk.length;
+                                bytesSent = int16sSent * 2;
+                                meanBytesSent = bytesSent;
+                            }
+                            meanKiloBytesPerChunk = meanBytesSent / 1000;
+                            kiloBytesPerSecond = bytesSent / (t2 - t1);  // bytes / ms == kB / s
+                            console.log(`audio pokes (poke ${i / messagesPerChunk}; ${int16sSent} in last ${messagesPerChunk ** 2} pokes) (avg ${meanKiloBytesPerChunk}kB; ${kiloBytesPerSecond}kB/s).`);
+                            bytesPerChunk = []; 
+                            t1 = performance.now();
+                        }
+                        window.urb.poke(
+                            window.ship,
+                            "ursr-client",
+                            "ursr-client-action",
+                            {
+                                "relay-audio": {
+                                    "audio": chunk
+                                }
+                            },
+                            () => { if (i % messagesPerChunk * messagesPerChunk == 0) { return console.log("Sent poke with audio data."); } },
+                            (err) => console.log(`Poke failed: ${err}`),
+                        );
+                        chunk = [];
+                      }
                     }
-                    //  /*
-                    //    Send converted audio from the AudioWorkletProcessor to the ASR Engine once the
-                    //    WebSocket connection is open.
-                    //  */
-                    // if (websocket.readyState === WebSocket.OPEN) {
-                    //   websocket.send(e.data);
-                    // }
                   }
                   processorNode.onprocessorerror = (error) => {
                     console.log(`Processor node error: ${error}`);

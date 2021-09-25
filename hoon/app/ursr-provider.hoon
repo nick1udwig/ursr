@@ -36,8 +36,6 @@
   ++  on-poke
     |=  [=mark =vase]
     ^-  (quip card _this)
-    ~&  >  "got poke"
-    ~&  >  "got poke with mark {<mark>} and vase {<vase>}"
     ?+    mark  (on-poke:def mark vase)
         %ursr-provider-action
       ~&  >>>  !<(provider-action:ursr vase)
@@ -107,7 +105,6 @@
     ==
     ::
       %relay-reply
-    :: =/  reply=engine-reply:ursr  +.action
     ~&  >  "got %relay-reply request: {<+.action>}"
     :_  state
     :~  [%give %fact ~[/provider-to-client] %ursr-provider-action !>(action)]

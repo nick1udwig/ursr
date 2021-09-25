@@ -38,7 +38,6 @@
     ^-  (quip card _this)
     ?+    mark  (on-poke:def mark vase)
         %ursr-client-action
-      :: ~&  >>>  !<(client-action:ursr vase)
       =^  cards  state
       (handle-action:hc !<(client-action:ursr vase))
       [cards this]
@@ -107,10 +106,8 @@
     ::
       %relay-audio
     =/  samples=raw-pcm-ssixteenle-audio:ursr  +.action
-    :: ~&  >  "got %relay-audio request"
     :_  state
     :~  [%give %fact ~[/client-to-provider] %ursr-provider-action !>([%relay-audio samples])]
-    :: :~  [%give %fact ~[/client-to-provider] %raw-pcm-ssixteenle-audio !>(samples)]
     ==
     ::
       %audio-done
