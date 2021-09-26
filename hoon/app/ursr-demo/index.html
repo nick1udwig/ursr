@@ -186,21 +186,21 @@
                             "ship": `~${window.ship}`,
                             "name": `${chatResource}`,
                         },
-                    },
-                    "nodes": {
-                        // [nodeName]: {
-                        [`/${postMessageIndex}`]: {
-                            "post": {
-                                "author": `~${window.ship}`,
-                                // "index": nodeName,
-                                "index": `/${postMessageIndex}`,
-                                "time-sent": parseInt(`${currentTimeMicroseconds}`),
-                                "contents": [{"text": `${message}`}],
-                                "hash": null,
-                                "signatures": [],
-                                // "signatures": null,
+                        "nodes": {
+                            // [nodeName]: {
+                            [`/${postMessageIndex}`]: {
+                                "post": {
+                                    "author": `~${window.ship}`,
+                                    // "index": nodeName,
+                                    "index": `/${postMessageIndex}`,
+                                    "time-sent": parseInt(`${currentTimeMicroseconds}`),
+                                    "contents": [{"text": `${message}`}],
+                                    "hash": null,
+                                    "signatures": [],
+                                    // "signatures": null,
+                                },
+                                "children": null,
                             },
-                            "children": null,
                         },
                     },
                 };
