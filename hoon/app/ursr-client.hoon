@@ -37,9 +37,9 @@
     |=  [=mark =vase]
     ^-  (quip card _this)
     ?+    mark  (on-poke:def mark vase)
-        %ursr-client-action
+        %ursr-action
       =^  cards  state
-      (handle-action:hc !<(client-action:ursr vase))
+      (handle-action:hc !<(action:ursr vase))
       [cards this]
     ::
         %noun
@@ -90,33 +90,46 @@
 ::  start helper core
 |_  bowl=bowl:gall
 ++  handle-action
-  |=  action=client-action:ursr
+  |=  =action:ursr
   ^-  (quip card _state)
   ?-    -.action
-      %start-threads
+      %audio-done
+    ~&  >  "got %audio-done"
+    :_  state
+    :~  [%give %fact ~[/client-to-provider] %ursr-action !>(action)]
+    ==
+    ::
+      %client-start-threads
     =/  client-args=args-frontend-to-client:ursr  +.action
-    ~&  >  "got %start-threads request: {<client-args>}"
+    ~&  >  "got %client-start-threads request: {<client-args>}"
     =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
     =/  receive-args  [~ `receive-tid %ursr-client-receive-from-provider !>([client-args receive-tid])]
     ~&  >  "starting receive thread {<receive-tid>}"
     :_  state
     :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
-        [%give %fact ~[/frontend-path] %ursr-client-action !>([%send-tid receive-tid])]
+        [%give %fact ~[/frontend-path] %ursr-action !>([%client-send-tid receive-tid])]
     ==
     ::
       %relay-audio
     =/  samples=raw-pcm-ssixteenle-audio:ursr  +.action
     :_  state
-    :~  [%give %fact ~[/client-to-provider] %ursr-provider-action !>([%relay-audio samples])]
+    :~  [%give %fact ~[/client-to-provider] %ursr-action !>([%relay-audio samples])]
     ==
     ::
-      %audio-done
-    ~&  >  "got %audio-done"
+      %stop-threads
+    =/  receive-tid=@ta  +.action
+    ~&  >  "stopping receive thread {<receive-tid>}"
     :_  state
-    :~  [%give %fact ~[/client-to-provider] %ursr-client-action !>(action)]
+    :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-stop !>([receive-tid %.y])]
     ==
     ::
-      %send-tid
-    ~&  >>>  "unexpectedly received %send-tid; ignoring"  `state
+      %client-send-tid
+    ~&  >>>  "unexpectedly received %client-send-tid; ignoring"  `state
+    ::
+      %provider-start-job
+    ~&  >>>  "unexpectedly received %provider-start-job; ignoring"  `state
+    ::
+      %relay-reply
+    ~&  >>>  "unexpectedly received %relay-reply; ignoring"  `state
   ==
 --

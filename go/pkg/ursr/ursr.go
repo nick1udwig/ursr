@@ -4,11 +4,11 @@ import (
 	"github.com/hosted-fornet/ursr/go/pkg/engine"
 )
 
-type ProviderAction struct {
+type Action struct {
 	AudioDone  bool                    `json:"audio-done"`
 	RelayAudio RawPcm16Le              `json:"relay-audio"`
 	RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
-	StartJob   ArgsOverNetwork         `json:"start-job"`
+	StartJob   ArgsOverNetwork         `json:"provider-start-job"`
 }
 
 type ArgsOverNetwork struct {

@@ -37,10 +37,10 @@
     |=  [=mark =vase]
     ^-  (quip card _this)
     ?+    mark  (on-poke:def mark vase)
-        %ursr-provider-action
-      ~&  >>>  !<(provider-action:ursr vase)
+        %ursr-action
+      ~&  >>>  !<(action:ursr vase)
       =^  cards  state
-      (handle-action:hc !<(provider-action:ursr vase))
+      (handle-action:hc !<(action:ursr vase))
       [cards this]
     ::
         %noun
@@ -91,27 +91,42 @@
 :: start helper core
 |_  bowl=bowl:gall
 ++  handle-action
-  |=  action=provider-action:ursr
+  |=  =action:ursr
   ^-  (quip card _state)
   ?-    -.action
-      %start-job
+      %provider-start-job
     =/  client-args=args-over-network:ursr  +.action
-    ~&  >  "got %start-job request: {<client-args>}"
+    ~&  >  "got %provider-start-job request: {<client-args>}"
     =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
     =/  receive-args  [~ `receive-tid %ursr-provider-receive-from-client !>([src.bowl tid.client-args])]
     :_  state
     :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
-        [%give %fact ~[/urth-path] %ursr-provider-action !>([%start-job [options.client-args receive-tid]])]
+        [%give %fact ~[/urth-path] %ursr-action !>([%provider-start-job [options.client-args receive-tid]])]
     ==
     ::
       %relay-reply
     ~&  >  "got %relay-reply request: {<+.action>}"
     :_  state
-    :~  [%give %fact ~[/provider-to-client] %ursr-provider-action !>(action)]
+    :~  [%give %fact ~[/provider-to-client] %ursr-action !>(action)]
     ==
     ::
-      %relay-audio
-    ~&  >  "got unexpected case %relay-audio"  `state
+      %stop-threads
+    =/  receive-tid=@ta  +.action
+    ~&  >  "stopping receive thread {<receive-tid>}"
+    :_  state
+    :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-stop !>([receive-tid %.y])]
+    ==
     ::
+      %audio-done
+    ~&  >  "unexpectedly received %audio-done; ignoring"  `state
+    ::
+      %client-send-tid
+    ~&  >  "unexpectedly received %client-send-tid; ignoring"  `state
+    ::
+      %client-start-threads
+    ~&  >  "unexpectedly received %client-start-threads; ignoring"  `state
+    ::
+      %relay-audio
+    ~&  >  "unexpectedly received %relay-audio; ignoring"  `state
   ==
 --

@@ -19,7 +19,7 @@
 ;<  ~               bind:m  (watch /from-client [client.args %ursr-client] client-path)
 ::  Pass through Engine reply facts from Urth to client.
 ::
-;<  ~               bind:m  (pass-fact-through:ursr-lib /from-client urth-path %ursr-provider-action)
+;<  ~               bind:m  (pass-fact-through:ursr-lib /from-client urth-path)
 ::  Clean up.
 ::
 ;<  ~               bind:m  (take-kick /from-client)

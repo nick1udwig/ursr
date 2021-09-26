@@ -4,7 +4,7 @@
     <body>
         <input type="text" id="provider" name="provider" placeholder="Provider (e.g. '~wes')." />
         <input type="text" id="code" name="code" placeholder="Client ship code (e.g. 'ropnys-batwyd-nossyt-mapwet')" />
-        <br /><br/ >
+        <br /><br />
 
         <button id="sendBtn">Send</button>
         <button id="stopBtn">Stop</button>
@@ -176,7 +176,7 @@
                 sendAudioToApp();
                 return;
                 // switch(fact.tag) {
-                //     case "send-tid":
+                //     case "client-send-tid":
                 //         await readTidsFromApp(fact);
                 //         unsubscribeFromApp();
                 //         await subscribeToThread();
@@ -186,7 +186,7 @@
 
             let receiveTid = "";
             const readTidsFromApp = async (data) => {
-                receiveTid = data["send-tid"];
+                receiveTid = data["client-send-tid"];
                 console.log(`Got receiveTid from client: ${receiveTid}`);
             };
 

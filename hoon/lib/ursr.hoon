@@ -48,38 +48,27 @@
         [%provider %s (scot %p provider.args-frontend-to-client)]
     ==
   ::
-  ++  client-action
-    |=  action=client-action:ursr
+  ++  action
+    |=  =action:ursr
     ^-  json
     ?-  -.action
-        %start-threads
-      %-  pairs
-      :~  [%start-threads (args-frontend-to-client +.action)]
-      ==
-      ::
-        %send-tid
-      %-  pairs
-      :~  [%send-tid %s `cord`+.action]
-      ==
-      ::
-        %relay-audio
-      %-  pairs
-      :~  [%relay-audio (raw-pcm-ssixteenle-audio +.action)]
-      ==
-      ::
         %audio-done
       %-  pairs
       :~  [%audio-done %b +.action]
       ==
-    ==
-  ::
-  ++  provider-action
-    |=  action=provider-action:ursr
-    ^-  json
-    ?-  -.action
-        %start-job
+      ::
+        %client-send-tid
       %-  pairs
-      :~  [%start-job (args-over-network +.action)]
+      :~  [%client-send-tid %s `cord`+.action]
+      ==
+      ::
+        %client-start-threads
+      %-  pairs
+      :~  [%client-start-threads (args-frontend-to-client +.action)]
+      ==
+        %provider-start-job
+      %-  pairs
+      :~  [%provider-start-job (args-over-network +.action)]
       ==
       ::
         %relay-audio
@@ -90,6 +79,11 @@
         %relay-reply
       %-  pairs
       :~  [%relay-reply (engine-reply +.action)]
+      ==
+      ::
+        %stop-threads
+      %-  pairs
+      :~  [%stop-threads %s `cord`+.action]
       ==
     ==
   --
@@ -146,42 +140,29 @@
         [%provider (su ;~(pfix sig fed:ag))]
     ==
   ::
-  ++  client-action
+  ++  action
     |=  jon=json
-    ^-  client-action:ursr
+    ^-  action:ursr
     %.  jon
     %-  of
-    :~  [%start-threads args-frontend-to-client]
-        [%send-tid [%tid so]]
-        [%relay-audio raw-pcm-ssixteenle-audio]
-        [%audio-done bo]
-    ==
-  ::
-  ++  provider-action
-    |=  jon=json
-    ^-  provider-action:ursr
-    %.  jon
-    %-  of
-    :~  [%start-job args-over-network]
+    :~  [%audio-done bo]
+        [%client-send-tid [%tid so]]
+        [%client-start-threads args-frontend-to-client]
+        [%provider-start-job args-over-network]
         [%relay-audio raw-pcm-ssixteenle-audio]
         [%relay-reply engine-reply]
+        [%stop-threads [%tid so]]
     ==
   --
 ++  pass-fact-through
-  |=  [receive-path=path send-path=path expected-mark=@tas]
+  |=  [receive-path=path send-path=path]
   =/  m  (strand:spider ,~)
   ^-  form:m
   %-  (main-loop:strandio ,~)
   :~  |=  ~
       ^-  form:m
       ;<  =cage  bind:m  (take-fact:strandio receive-path)
-      :: ?+  p.cage
-      ::   ;<  ~    bind:m  (flog-text "received unexpected fact")
-      ::   ::
-      ::   expected-mark
-      :: %-  (slog leaf+"ursr-ted: relaying {<p.cage>}" ~)
       ;<  ~      bind:m  (send-raw-card:strandio [%give %fact ~[send-path] cage])
-      :: ==
       (pure:m ~)
   ==
 --

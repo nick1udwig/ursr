@@ -16,14 +16,14 @@
 %-  (slog leaf+"ursr-crfp: Got subscription from frontend: {<frontend-path>}" ~)
 ::  Start threads on provider ship.
 ::
-;<  ~                   bind:m  (poke [provider.fe.args %ursr-provider] [%ursr-provider-action !>([%start-job [options.fe.args client-tid.args]])])
+;<  ~                   bind:m  (poke [provider.fe.args %ursr-provider] [%ursr-action !>([%provider-start-job [options.fe.args client-tid.args]])])
 ::  Subscribe for replies from provider app.
 ::
 ;<  ~                   bind:m  (watch /from-provider [provider.fe.args %ursr-provider] provider-path)
 %-  (slog leaf+"ursr-crfp: Subscribed to provider send thread" ~)
 ::  Pass through Engine reply facts from provider to frontend.
 ::
-;<  ~                   bind:m  (pass-fact-through:ursr-lib /from-provider frontend-path %ursr-provider-action)
+;<  ~                   bind:m  (pass-fact-through:ursr-lib /from-provider frontend-path)
 ::  Clean up.
 ::
 ;<  ~                   bind:m  (take-kick provider-path)

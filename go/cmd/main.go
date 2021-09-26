@@ -96,7 +96,7 @@ func monitorSubscriptionEvents(
 }
 
 func startNewJob(ship *urbit.Client, event *urbit.Event, subscriptionsToJobs map[uint64]engine.Job) (err error) {
-	action := &ursr.ProviderAction{}
+	action := &ursr.Action{}
 	err = json.Unmarshal(event.Data, action)
 	if err != nil {
 		sugar.Errorw(
@@ -154,7 +154,7 @@ func startNewJob(ship *urbit.Client, event *urbit.Event, subscriptionsToJobs map
 
 func relayAudio(event *urbit.Event, subscriptionsToJobs map[uint64]engine.Job) (err error) {
 	job := subscriptionsToJobs[event.ID]
-	action := &ursr.ProviderAction{}
+	action := &ursr.Action{}
 	err = json.Unmarshal(event.Data, action)
 	if err != nil {
 		sugar.Errorw(
@@ -226,52 +226,55 @@ func relayReplies(ship *urbit.Client, job *engine.Job, subscriptionId uint64) (e
 				"reply", *reply,
 			)
 			if reply.Transcript != "" {
-				// replyAction := &ursr.ProviderAction{RelayReply: *reply}
-				replyAction := &struct {
-					RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
-				}{RelayReply: engine.ReplyToUrbitFormat(reply)}
+				// TODO: remove this hack
+				if reply.TranscriptFormatted != "" {
+					// replyAction := &ursr.Action{RelayReply: *reply}
+					replyAction := &struct {
+						RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
+					}{RelayReply: engine.ReplyToUrbitFormat(reply)}
 
-				replyBytes, err := json.Marshal(replyAction)
-				if err == nil {
-					pokeResult := ship.PokeShipMark(
-						ship.Name(),
-						config.UrSrProviderAppName,
-						"ursr-provider-action",
-						replyBytes,
-					)
-					err = pokeResult.Wait()
-					if err != nil {
+					replyBytes, err := json.Marshal(replyAction)
+					if err == nil {
+						pokeResult := ship.PokeShipMark(
+							ship.Name(),
+							config.UrSrProviderAppName,
+							"ursr-action",
+							replyBytes,
+						)
+						err = pokeResult.Wait()
+						if err != nil {
+							sugar.Errorw(
+								"Failed to relay Engine reply to ship.",
+								"subscriptionId", subscriptionId,
+								"err", err,
+								"ship", ship.Name(),
+								"app", config.UrSrProviderAppName,
+								"mark", "ursr-action",
+								"replyAction", replyAction,
+								"replyBytes", replyBytes,
+							)
+						} else {
+							sugar.Debugw(
+								"Sent poke to relay Engine reply to ship.",
+								"subscriptionId", subscriptionId,
+								"ship", ship.Name(),
+								"app", config.UrSrProviderAppName,
+								"mark", "ursr-action",
+								"replyAction", replyAction,
+								"replyBytes", replyBytes,
+							)
+						}
+					} else {
 						sugar.Errorw(
-							"Failed to relay Engine reply to ship.",
+							"Failed to marshal reply to ship.",
 							"subscriptionId", subscriptionId,
 							"err", err,
 							"ship", ship.Name(),
 							"app", config.UrSrProviderAppName,
-							"mark", "ursr-provider-action",
+							"mark", "ursr-action",
 							"replyAction", replyAction,
-							"replyBytes", replyBytes,
-						)
-					} else {
-						sugar.Debugw(
-							"Sent poke to relay Engine reply to ship.",
-							"subscriptionId", subscriptionId,
-							"ship", ship.Name(),
-							"app", config.UrSrProviderAppName,
-							"mark", "ursr-provider-action",
-							"replyAction", replyAction,
-							"replyBytes", replyBytes,
 						)
 					}
-				} else {
-					sugar.Errorw(
-						"Failed to marshal reply to ship.",
-						"subscriptionId", subscriptionId,
-						"err", err,
-						"ship", ship.Name(),
-						"app", config.UrSrProviderAppName,
-						"mark", "ursr-provider-action",
-						"replyAction", replyAction,
-					)
 				}
 			}
 			reply, err = job.NextReply()
