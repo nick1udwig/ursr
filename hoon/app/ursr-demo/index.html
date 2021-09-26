@@ -4,6 +4,7 @@
     <body>
         <input type="text" id="provider" name="provider" placeholder="Provider (e.g. '~wes')." />
         <input type="text" id="code" name="code" placeholder="Client ship code (e.g. 'ropnys-batwyd-nossyt-mapwet')" />
+        <input type="text" id="chat" name="chat" placeholder="Chat to post transcripts to (e.g. 'my-voice-notes')" />
         <br /><br />
 
         <button id="sendBtn">Send</button>
@@ -151,8 +152,72 @@
                 }
             }
 
+            // https://stackoverflow.com/a/61281355
+            const toPlainString = (num) => {
+                return (''+ +num).replace(/(-?)(\d*)\.?(\d*)e([+-]\d+)/,
+                    function(a,b,c,d,e) {
+                        return e < 0
+                            ? b + '0.' + Array(1-e-c.length).join(0) + c + d
+                            : b + c + d + Array(e-d.length+1).join(0);
+                    });
+            };
 
-            const login =  async (pass) => {
+            let chatResource;
+
+            // https://github.com/midsum-salrux/quinnat/blob/1f0d45dada225d7f39abb1d98646489406d499f9/quinnat/quinnat.py
+            const daEpoch = 170141184475152167957503069145530368000;
+            const daSecond = 18446744073709551616;
+            const getDaTime = (currentTimeMicroseconds) => {
+                console.log(`mus: ${currentTimeMicroseconds}`);
+                currentTimeSeconds = currentTimeMicroseconds / 10**6;
+                console.log(`s: ${currentTimeSeconds}`);
+                currentTimeDaStyle = currentTimeSeconds * daSecond;
+                console.log(`da: ${currentTimeDaStyle}`);
+                return `/${toPlainString(currentTimeDaStyle + daEpoch)}`;
+            };
+
+            let postMessageIndex = 1;
+            const postMessage = async(chatResource, message) => {
+                currentTimeMicroseconds = performance.timeOrigin + performance.now();
+                // nodeName = getDaTime(currentTimeMicroseconds);
+                pokeObj = {
+                    "add-nodes": {
+                        "resource": {
+                            "ship": `~${window.ship}`,
+                            "name": `${chatResource}`,
+                        },
+                    },
+                    "nodes": {
+                        // [nodeName]: {
+                        [`/${postMessageIndex}`]: {
+                            "post": {
+                                "author": `~${window.ship}`,
+                                // "index": nodeName,
+                                "index": `/${postMessageIndex}`,
+                                "time-sent": parseInt(`${currentTimeMicroseconds}`),
+                                "contents": [{"text": `${message}`}],
+                                "hash": null,
+                                "signatures": [],
+                                // "signatures": null,
+                            },
+                            "children": null,
+                        },
+                    },
+                };
+                console.log(`sending audio to chat with: ${JSON.stringify(pokeObj)}`);
+                window.urb.poke(
+                    window.ship,
+                    "graph-push-hook",
+                    "graph-update-2",
+                    pokeObj,
+                    () => console.log("Sent poke to post transcript to chat."),
+                    (err) => console.log(`Poke failed: ${err}`),
+                );
+                postMessageIndex += 1;
+            };
+
+
+            const login = async (pass) => {
                 let loginRes = await fetch('/~/login', {
                     method: 'POST',
                     body: `password=${pass}`
@@ -209,6 +274,7 @@
 
             const handleFactsFromThread = async (fact) => {
                 console.log(`Got Engine reply: ${JSON.stringify(fact)}.`)
+                postMessage(chatResource, fact["relay-reply"]["transcript-formatted"]);
                 return;
             };
 
@@ -235,6 +301,7 @@
                     provider = "~wes";
                 }
                 let code = document.getElementById("code").value;
+                chatResource = document.getElementById("chat").value;
                 await login(code);
 
                 // Tell client app to start threads;
