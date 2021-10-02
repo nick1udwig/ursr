@@ -342,15 +342,6 @@ func main() {
 	)
 
 	monitorSubscriptionEvents(ship, appSubscription, timeout)
-	// go monitorSubscriptionEvents(ship, appSubscription, timeout)
-
-	// err = listenForAndRunJobs(ship, newJobChan, timeout)
-	// if err != nil {
-	// 	sugar.Errorw(
-	// 		"",
-	// 		"err", err,
-	// 	)
-	// }
 
 	sugar.Debugw("Closing connection.")
 	err = unsubscribe(ship, appSubscription.ID)
