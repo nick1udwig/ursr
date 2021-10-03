@@ -1,0 +1,10 @@
+:~  title+'UrSR Provider'
+    info+'Urbit Speech Recognition provider CLI'
+    color+0xee.5432
+    glob-ames+[~wes 0v4.l0l4b.1td4h.0fi38.8mht1.edvsu]
+    image+'https://imgr.search.brave.com/OrlkNiFaC--YPNLoEwGO5-MWfZ3P-mXXc9G2vcPz21s/fit/1200/1200/ce/1/aHR0cHM6Ly9zdGF0/aWMudmVjdGVlenku/Y29tL3N5c3RlbS9y/ZXNvdXJjZXMvcHJl/dmlld3MvMDAwLzQy/MC81MTIvb3JpZ2lu/YWwvbWljcm9waG9u/ZS1pY29uLXZlY3Rv/ci1pbGx1c3RyYXRp/b24uanBn'
+    base+'ursr-provider'
+    version+[0 0 1]
+    website+'https://github.com/hosted-fornet/ursr'
+    license+'MIT'
+==

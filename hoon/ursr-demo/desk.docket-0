@@ -1,5 +1,5 @@
 :~  title+'UrSR Demo'
-    info+'A simple voice notes app, using UrSR.'
+    info+'A simple voice notes app, using UrSR'
     color+0x00.0000
     base+'ursr-demo'
     version+[0 0 0]

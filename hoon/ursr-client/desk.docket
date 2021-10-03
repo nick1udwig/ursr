@@ -1,8 +1,0 @@
-:~  title+'UrSR Client'
-    info+'Urbit Speech Recognition client CLI.'
-    color+0x00.0000
-    href+'https://github.com/hosted-fornet/ursr/blob/master/README.md'
-    version+[0 0 0]
-    website+'https://github.com/hosted-fornet/ursr'
-    license+'MIT'
-==
