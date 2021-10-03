@@ -1,7 +1,9 @@
 :~  title+'UrSR Client'
     info+'Urbit Speech Recognition client CLI'
-    color+0x00.0000
-    href+'https://github.com/hosted-fornet/ursr/blob/master/README.md'
+    color+0x4b.4b4b
+    glob-http+['https://raw.githubusercontent.com/hosted-fornet/ursr/blob/8ac2e026f1d9cd7769b45bfc5964e9cc58450e12/globs/glob-0v5.86m6s.nq27q.5292m.i3jj2.9sau5.glob' 0v5.86m6s.nq27q.5292m.i3jj2.9sau5]
+    image+'https://raw.githubusercontent.com/hosted-fornet/ursr/blob/59830883ee41c02825dc1e946e1fb755ff9f457b/images/211002-ursr-client.png'
+    base+'ursr-client'
     version+[0 0 0]
     website+'https://github.com/hosted-fornet/ursr'
     license+'MIT'
