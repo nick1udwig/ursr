@@ -3,6 +3,7 @@
 app_name="ursr-app-name"
 usage_string="Usage: ./make-${app_name}.sh $app_name /path/to/pier /path/to/${app_name}"
 
+# Parse args.
 if [ $# -ne 3 ]; then
     echo "$usage_string"
     echo ""
@@ -46,6 +47,7 @@ if [ "$app_name" != "ursr-client" ] \
     exit 2
 fi
 
+# Clean and prepare workspace in `pkg`.
 if [ -f "$app_name" ]; then
     rm -r $app_name
 fi
@@ -60,6 +62,7 @@ if [ -f "${app_name}-tmp" ]; then
 fi
 cp -r $path_to_app_code "./${app_name}-tmp"
 
+# Build the desk.
 if [ "$app_name" == "ursr-demo" ]; then
     ./symbolic-merge.sh landscape $app_name
 fi
@@ -75,11 +78,13 @@ fi
 
 echo "[%zuse 420]" > ${app_name}/sys.kelvin
 
+# Place the desk in given pier.
 rm -r "${path_to_pier}/${app_name}"
 cp -Lr $app_name $path_to_pier
 
-# rm -r $app_name
+# Clean up.
+rm -r $app_name
 rm -r "./ursr-dev-tmp"
-# rm -r "./${app_name}-tmp"
+rm -r "./${app_name}-tmp"
 
 echo "Done."
