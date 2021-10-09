@@ -22,11 +22,6 @@
   $:  =options
       provider=@p
   ==
-::
-+$  args-client-to-client
-  $:  fe=args-frontend-to-client
-      client-tid=@ta
-  ==
 :: Used for:
 :: * Client to provider app (tid is client tid).
 :: * Provider app to middleman (tid is provider tid).

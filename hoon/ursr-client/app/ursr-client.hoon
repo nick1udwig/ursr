@@ -103,10 +103,11 @@
     =/  client-args=args-frontend-to-client:ursr  +.action
     ~&  >  "got %client-start-threads request: {<client-args>}"
     =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
-    =/  receive-args  [~ `receive-tid %ursr-client-receive-from-provider !>([client-args receive-tid])]
+    =/  receive-args  [~ `receive-tid [our.bowl %ursr-client da+now.bowl] %ursr-client-receive-from-provider !>([provider.client-args])]
     ~&  >  "starting receive thread {<receive-tid>}"
     :_  state
-    :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
+    :~  [%pass /poke-wire %agent [provider.client-args %ursr-provider] %poke %ursr-action !>([%provider-start-job [options.client-args receive-tid]])]
+        [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
         [%give %fact ~[/frontend-path] %ursr-action !>([%client-send-tid receive-tid])]
     ==
     ::
