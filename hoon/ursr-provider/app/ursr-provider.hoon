@@ -98,7 +98,8 @@
     =/  client-args=args-over-network:ursr  +.action
     ~&  >  "got %provider-start-job request: {<client-args>}"
     =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
-    =/  receive-args  [~ `receive-tid %ursr-provider-receive-from-client !>([src.bowl tid.client-args])]
+    =/  receive-args  [~ `receive-tid [our.bowl %ursr-provider da+now.bowl] %ursr-provider-receive-from-client !>([src.bowl])]
+    ~&  >  "starting receive thread {<receive-tid>}"
     :_  state
     :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
         [%give %fact ~[/urth-path] %ursr-action !>([%provider-start-job [options.client-args receive-tid]])]

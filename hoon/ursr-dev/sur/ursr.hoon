@@ -31,11 +31,6 @@
       tid=@ta
   ==
 ::
-+$  args-provider-to-provider
-  $:  client=@p
-      client-tid=@ta
-  ==
-::
 +$  action
   $%  [%audio-done done=?]
       [%client-send-tid tid=@ta]
