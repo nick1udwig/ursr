@@ -26,13 +26,14 @@ func subscribe(
 
 ) (subscription urbit.Result, err error) {
 	subscription = ship.Subscribe(appName, subscriptionPath)
-	if subscription.Err != nil {
+	err = subscription.Wait()
+	if err != nil {
 		sugar.Errorw(
 			"Failed to subscribe.",
 			"appName", appName,
 			"path", subscriptionPath,
 			"subscriptionId", subscription.ID,
-			"subscriptionErr", subscription.Err,
+			"subscriptionErr", err,
 		)
 	}
 	return
@@ -40,7 +41,8 @@ func subscribe(
 
 func unsubscribe(ship *urbit.Client, subscriptionId uint64) (err error) {
 	unsubscribeResult := ship.Unsubscribe(subscriptionId)
-	if unsubscribeResult.Err != nil {
+	err = unsubscribeResult.Wait()
+	if err != nil {
 		sugar.Errorw(
 			"Problem while unsubscribing.",
 			"unsubscribeId", unsubscribeResult.ID,
@@ -71,10 +73,10 @@ func monitorSubscriptionEvents(
 	for {
 		select {
 		case event := <-ship.Events():
-			// sugar.Debugw(
-			// 	"Got event from ship.",
-			// 	"event", event,
-			// )
+			sugar.Debugw(
+				"Got event from ship.",
+				"event", event,
+			)
 			switch event.Type {
 			case "diff":
 				if event.ID == appSubscription.ID {
@@ -316,6 +318,7 @@ func main() {
 	}
 	sugar.Debugw(
 		"Connected to ship.",
+		"name", ship.Name(),
 		"address", config.Address,
 	)
 
