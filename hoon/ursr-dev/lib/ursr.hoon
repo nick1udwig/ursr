@@ -158,11 +158,15 @@
   |=  [receive-path=path send-path=path]
   =/  m  (strand:spider ,~)
   ^-  form:m
+  %-  (slog leaf+"passing through facts from {<receive-path>} to {<send-path>}..." ~)
   %-  (main-loop:strandio ,~)
   :~  |=  ~
       ^-  form:m
+      %-  (slog leaf+"iter" ~)
       ;<  =cage  bind:m  (take-fact:strandio receive-path)
+      %-  (slog leaf+"got a fact {<cage>}" ~)
       ;<  ~      bind:m  (send-raw-card:strandio [%give %fact ~[send-path] cage])
+      %-  (slog leaf+"sent a fact" ~)
       (pure:m ~)
   ==
 --

@@ -22,9 +22,5 @@
 ::
 ;<  ~               bind:m  (pass-fact-through:ursr-lib /from-client urth-path)
 %-  (slog leaf+"ursr-prfc: Done with loop." ~)
-::  Clean up.
-::
-;<  ~               bind:m  (take-kick /from-client)
-%-  (slog leaf+"ursr-prfc: Got kick from client. Exiting." ~)
 ::
 (pure:m !>(~))

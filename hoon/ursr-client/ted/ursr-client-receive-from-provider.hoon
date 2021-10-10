@@ -22,9 +22,5 @@
 ::
 ;<  ~                   bind:m  (pass-fact-through:ursr-lib /from-provider frontend-path)
 %-  (slog leaf+"ursr-crfp: Done with loop." ~)
-::  Clean up.
-::
-;<  ~                   bind:m  (take-kick /from-provider)
-%-  (slog leaf+"ursr-crfp: Got kick from provider. Exiting." ~)
 ::
 (pure:m !>(~))

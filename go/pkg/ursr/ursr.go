@@ -5,10 +5,11 @@ import (
 )
 
 type Action struct {
-	AudioDone  bool                    `json:"audio-done"`
-	RelayAudio RawPcm16Le              `json:"relay-audio"`
-	RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
-	StartJob   ArgsOverNetwork         `json:"provider-start-job"`
+	AudioDone   bool                    `json:"audio-done"`
+	RelayAudio  RawPcm16Le              `json:"relay-audio"`
+	RelayReply  engine.ReplyUrbitFormat `json:"relay-reply"`
+	StartJob    ArgsOverNetwork         `json:"provider-start-job"`
+	StopThreads string                  `json:"stop-threads"`
 }
 
 type ArgsOverNetwork struct {

@@ -297,6 +297,26 @@ func relayReplies(ship *urbit.Client, job *engine.Job, subscriptionId uint64) (e
 				"err", err,
 			)
 		}
+		stopThreadsAction := &ursr.Action{StopThreads: job.ProviderShipTid}
+		stopThreadBytes, err := json.Marshal(stopThreadsAction)
+		if err == nil {
+			ship.PokeShipMark(
+				ship.Name(),
+				config.UrSrProviderAppName,
+				"ursr-action",
+				stopThreadBytes,
+			)
+		} else {
+			sugar.Errorw(
+				"Failed to marshal stop threads message to ship.",
+				"subscriptionId", subscriptionId,
+				"err", err,
+				"ship", ship.Name(),
+				"app", config.UrSrProviderAppName,
+				"mark", "ursr-action",
+				"stopThreadsAction", stopThreadsAction,
+			)
+		}
 	}
 	return
 }

@@ -113,6 +113,7 @@
     ::
       %relay-audio
     =/  samples=raw-pcm-ssixteenle-audio:ursr  +.action
+    ~&  >  "relaying audio {<samples>}"
     :_  state
     :~  [%give %fact ~[/client-to-provider] %ursr-action !>([%relay-audio samples])]
     ==
