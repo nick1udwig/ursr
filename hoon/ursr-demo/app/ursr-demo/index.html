@@ -310,6 +310,8 @@
             const messagesPerChunk = 10;
             let audioCtx;
             let audioStream;
+            let jobId;
+            let jobIdUrbitStyle;
 
             function createStreamingAudio() {
                 /*
@@ -394,10 +396,13 @@
                                     window.urb.poke(
                                         window.ship,
                                         "ursr-client",
-                                        "ursr-action",
+                                        "ursr-payload",
                                         {
-                                            "relay-audio": {
-                                                "audio": chunk
+                                            "job-id": jobId,
+                                            "action": {
+                                                "relay-audio": {
+                                                    "audio": chunk
+                                                }
                                             }
                                         },
                                         () => { if (i % messagesPerChunk * messagesPerChunk == 0) { return console.log("Sent poke with audio data."); } },
@@ -433,9 +438,12 @@
                 window.urb.poke(
                     window.ship,
                     "ursr-client",
-                    "ursr-action",
+                    "ursr-payload",
                     {
-                        "audio-done": true
+                        "job-id": jobId,
+                        "action": {
+                            "audio-done": true
+                        }
                     },
                     () => console.log("Sent poke to signal audio done sending."),
                     (err) => console.log(`Poke failed: ${err}`),
@@ -446,34 +454,11 @@
                 }
             }
 
-            // https://stackoverflow.com/a/61281355
-            const toPlainString = (num) => {
-                return (''+ +num).replace(/(-?)(\d*)\.?(\d*)e([+-]\d+)/,
-                    function(a,b,c,d,e) {
-                        return e < 0
-                            ? b + '0.' + Array(1-e-c.length).join(0) + c + d
-                            : b + c + d + Array(e-d.length+1).join(0);
-                    });
-            };
-
             let chatResource;
-
-            // https://github.com/midsum-salrux/quinnat/blob/1f0d45dada225d7f39abb1d98646489406d499f9/quinnat/quinnat.py
-            const daEpoch = 170141184475152167957503069145530368000;
-            const daSecond = 18446744073709551616;
-            const getDaTime = (currentTimeMicroseconds) => {
-                console.log(`mus: ${currentTimeMicroseconds}`);
-                currentTimeSeconds = currentTimeMicroseconds / 10**6;
-                console.log(`s: ${currentTimeSeconds}`);
-                currentTimeDaStyle = currentTimeSeconds * daSecond;
-                console.log(`da: ${currentTimeDaStyle}`);
-                return `/${toPlainString(currentTimeDaStyle + daEpoch)}`;
-            };
 
             let postMessageIndex = 1;
             const postMessage = async(chatResource, message) => {
                 currentTimeMicroseconds = performance.timeOrigin + performance.now();
-                // nodeName = getDaTime(currentTimeMicroseconds);
                 pokeObj = {
                     "add-nodes": {
                         "resource": {
@@ -481,17 +466,14 @@
                             "name": `${chatResource}`,
                         },
                         "nodes": {
-                            // [nodeName]: {
                             [`/${postMessageIndex}`]: {
                                 "post": {
                                     "author": `~${window.ship}`,
-                                    // "index": nodeName,
                                     "index": `/${postMessageIndex}`,
                                     "time-sent": parseInt(`${currentTimeMicroseconds}`),
                                     "contents": [{"text": `${message}`}],
                                     "hash": null,
                                     "signatures": [],
-                                    // "signatures": null,
                                 },
                                 "children": null,
                             },
@@ -502,7 +484,7 @@
                 window.urb.poke(
                     window.ship,
                     "graph-push-hook",
-                    "graph-update-2",
+                    "graph-update-3",
                     pokeObj,
                     () => console.log("Sent poke to post transcript to chat."),
                     (err) => console.log(`Poke failed: ${err}`),
@@ -528,25 +510,9 @@
                 console.log(`Logged in to ${window.ship}.`);
             };
 
-            const handleFactsFromApp = async (fact, appSubscription) => {
-                console.log("Got fact from app");
-                await readTidsFromApp(fact);
-                await subscribeToThread();
-                sendAudioToApp();
-                return;
-                // switch(fact.tag) {
-                //     case "client-send-tid":
-                //         await readTidsFromApp(fact);
-                //         unsubscribeFromApp();
-                //         await subscribeToThread();
-                //         return;
-                // }
-            };
-
-            let receiveTid = "";
-            const readTidsFromApp = async (data) => {
-                receiveTid = data["client-send-tid"];
-                console.log(`Got receiveTid from client: ${receiveTid}`);
+            const handleFactsFromApp = async (fact) => {
+                console.log(`Got Engine reply: ${JSON.stringify(fact)}.`);
+                postMessage(chatResource, fact["action"]["relay-reply"]["transcript-formatted"]);
             };
 
             const unsubscribeFromApp = async (appSubscription) => {
@@ -554,32 +520,38 @@
                 console.log("Unsubscribed from app");
             };
 
-            const subscribeToThread = async () => {
-                console.log("Subscribing to receive thread.");
-                window.urb.subscribe(
-                    window.ship,
-                    "spider",
-                    "/thread/" + receiveTid + "/updates",
-                    (err) => console.log(`receive-thread: Couldn't subscribe: ${err}.`),
-                    (data) => handleFactsFromThread(data),
-                    (quit) => console.log("receive-thread: Closed subscription."),
-                );
-            };
-
-            const handleFactsFromThread = async (fact) => {
-                console.log(`Got Engine reply: ${JSON.stringify(fact)}.`)
-                postMessage(chatResource, fact["relay-reply"]["transcript-formatted"]);
-                return;
-            };
-
             const sendAudioToApp = async () => {
-                console.log("Sending audio to thread...")
+                console.log("Sending audio to thread...");
                 if (!audioStream) {
                     audioStream = await navigator.mediaDevices.getUserMedia({audio: true});
                 }
                 createStreamingAudio();
             };
 
+            const uintToUrbitStyle = (number) => {
+                const digitsPerGroup = 3;
+                const strIn = `${number}`;
+                let numberPeriods = Math.floor(strIn.length / digitsPerGroup);
+                let firstPeriodPos = strIn.length % digitsPerGroup;
+                let strOut = "";
+                if (numberPeriods == 0) {
+                    strOut += strIn;
+                } else {
+                    if (firstPeriodPos != 0) {
+                        strOut += `${strIn.slice(0, firstPeriodPos)}.`;
+                    }
+                    for (let i = 0; i < numberPeriods; i++) {
+                        strOut += strIn.slice(
+                            firstPeriodPos + (i)*digitsPerGroup,
+                            firstPeriodPos + (i+1)*digitsPerGroup,
+                        );
+                        if (i < numberPeriods - 1) {
+                            strOut += ".";
+                        }
+                    }
+                }
+                return strOut;
+            };
 
             window.urb = new Channel();
             let sendButton = document.getElementById("sendBtn");
@@ -590,6 +562,9 @@
             });
 
             sendButton.addEventListener("click", async () => {
+                jobId = Math.floor(Math.random() * 1000000000);
+                jobIdUrbitStyle = uintToUrbitStyle(jobId);
+                console.log(`Job id, urbit style: ${jobId}, ${jobIdUrbitStyle}`);
                 let provider = document.getElementById("provider").value;
                 if (provider == "") {
                     provider = "~wes";
@@ -603,27 +578,32 @@
                 let appSubscription = window.urb.subscribe(
                     window.ship,
                     "ursr-client",
-                    "/frontend-path",
+                    `/frontend-path/${jobIdUrbitStyle}`,
                     (err) => console.log(`ursr-client: Couldn't subscribe: ${err}.`),
-                    (data) => handleFactsFromApp(data, appSubscription),
+                    (data) => handleFactsFromApp(data),
                     (quit) => console.log("ursr-client: Closed subscription."),
                 );
+
+                sendAudioToApp();
 
                 // Send options for request.
                 window.urb.poke(
                     window.ship,
                     "ursr-client",
-                    "ursr-action",
+                    "ursr-payload",
                     {
-                        "client-start-threads": {
-                            "options": {
-                                "command": "recognize",
-                                "format": "raw",
-                                "encoding": "pcm_s16le",
-                                "rate": rate,
-                                "transcript-formatted": true
-                            },
-                            "provider": provider
+                        "job-id": jobId,
+                        "action": {
+                            "client-start-job": {
+                                "options": {
+                                    "command": "recognize",
+                                    "format": "raw",
+                                    "encoding": "pcm_s16le",
+                                    "rate": rate,
+                                    "transcript-formatted": true
+                                },
+                                "provider": provider
+                            }
                         }
                     },
                     () => console.log("Sent poke to start client threads."),

@@ -32,14 +32,6 @@
     :~  [%audio [%a (turn audio.raw-pcm-ssixteenle-audio |=(=cord n+(@ta cord)))]]
     ==
   ::
-  ++  args-over-network
-    |=  =args-over-network:ursr
-    ^-  json
-    %-  pairs
-    :~  [%options (options options.args-over-network)]
-        [%tid %s `cord`tid.args-over-network]
-    ==
-  ::
   ++  args-frontend-to-client
     |=  =args-frontend-to-client:ursr
     ^-  json
@@ -57,18 +49,9 @@
       :~  [%audio-done %b +.action]
       ==
       ::
-        %client-send-tid
-      %-  pairs
-      :~  [%client-send-tid %s `cord`+.action]
-      ==
-      ::
-        %client-start-threads
+        %client-start-job
       %-  pairs
       :~  [%client-start-threads (args-frontend-to-client +.action)]
-      ==
-        %provider-start-job
-      %-  pairs
-      :~  [%provider-start-job (args-over-network +.action)]
       ==
       ::
         %relay-audio
@@ -76,15 +59,23 @@
       :~  [%relay-audio (raw-pcm-ssixteenle-audio +.action)]
       ==
       ::
+        %relay-options
+      %-  pairs
+      :~  [%relay-options (options +.action)]
+      ==
+      ::
         %relay-reply
       %-  pairs
       :~  [%relay-reply (engine-reply +.action)]
       ==
-      ::
-        %stop-threads
-      %-  pairs
-      :~  [%stop-threads %s `cord`+.action]
-      ==
+    ==
+  ::
+  ++  payload
+    |=  =payload:ursr
+    ^-  json
+    %-  pairs
+    :~  [%job-id (numb job-id.payload)]
+        [%action (action action.payload)]
     ==
   --
 ::
@@ -122,15 +113,6 @@
     :~  [%audio (ar no)]
     ==
   ::
-  ++  args-over-network
-    |=  jon=json
-    ^-  args-over-network:ursr
-    %.  jon
-    %-  ot
-    :~  [%options options]
-        [%tid so]
-    ==
-  ::
   ++  args-frontend-to-client
     |=  jon=json
     ^-  args-frontend-to-client:ursr
@@ -146,23 +128,19 @@
     %.  jon
     %-  of
     :~  [%audio-done bo]
-        [%client-send-tid [%tid so]]
-        [%client-start-threads args-frontend-to-client]
-        [%provider-start-job args-over-network]
+        [%client-start-job args-frontend-to-client]
         [%relay-audio raw-pcm-ssixteenle-audio]
+        [%relay-options options]
         [%relay-reply engine-reply]
-        [%stop-threads [%tid so]]
+    ==
+  ::
+  ++  payload
+    |=  jon=json
+    ^-  payload:ursr
+    %.  jon
+    %-  ot
+    :~  [%job-id ni]
+        [%action action]
     ==
   --
-++  pass-fact-through
-  |=  [receive-path=path send-path=path]
-  =/  m  (strand:spider ,~)
-  ^-  form:m
-  %-  (main-loop:strandio ,~)
-  :~  |=  ~
-      ^-  form:m
-      ;<  =cage  bind:m  (take-fact:strandio receive-path)
-      ;<  ~      bind:m  (send-raw-card:strandio [%give %fact ~[send-path] cage])
-      (pure:m ~)
-  ==
 --

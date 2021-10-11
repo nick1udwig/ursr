@@ -6,7 +6,7 @@
     ==
 ::
 +$  state-zero
-    $:  [%0 counter=@]
+    $:  [%0 active=(set @ud)]
     ==
 ::
 +$  card  card:agent:gall
@@ -23,7 +23,7 @@
   ++  on-init
     ^-  (quip card _this)
     ~&  >  '%ursr-client initialized successfully'
-    =.  state  [%0 0]
+    =.  state  [%0 ~]
     `this
   ++  on-save
     ^-  vase
@@ -37,9 +37,9 @@
     |=  [=mark =vase]
     ^-  (quip card _this)
     ?+    mark  (on-poke:def mark vase)
-        %ursr-action
+        %ursr-payload
       =^  cards  state
-      (handle-action:hc !<(action:ursr vase))
+      (handle-payload:hc !<(payload:ursr vase))
       [cards this]
     ::
         %noun
@@ -57,11 +57,18 @@
     |=  =path
     ^-  (quip card _this)
     ?+     path  (on-watch:def path)
-        [%client-to-provider ~]
-        ~&  >>  "got subscription from provider"  `this
-        ::
-        [%frontend-path ~]
-        ~&  >>  "got subscription from urth frontend"  `this
+        [%frontend-path @ ~]
+      =/  job-id=@ud  (slav %ud -.+.path)
+      ~&  >>  "got subscription from urth frontend {<job-id>}"
+      ?:  (~(has in active.state) job-id)
+        :: TODO: kick the newcomer.
+        :: TODO: warn frontend this job-id is occupied.
+        ~&  >>  "already have this job-id"
+        `this
+      `this(state [%0 (~(put in active.state) job-id)])
+      ::
+        [%client-to-provider @ ~]
+      ~&  >>  "got subscription from provider {<-.+.path>}"  `this
     ==
   ++  on-leave
     |=  =path
@@ -71,64 +78,64 @@
     |=  [=wire =sign:agent:gall]
     ^-  (quip card _this)
     ?+    wire  (on-agent:def wire sign)
-        [%counter @ ~]
+        [%from-provider @ ~]
       ?+  -.sign  (on-agent:def wire sign)
           %fact
-        =/  val=@  !<(@ q.cage.sign)
-        ~&  >>  "counter val on {<src.bowl>} is {<val>}"
-        `this
+        ~&  >>  "got reply cage from provider {<cage.sign>}"
+        :: =/  job-id-ta=@ta  (scot %ud i.-.+.wire)
+        =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
+        =/  job-id-ta=@ta  (scot %ud job-id.p)
+        :_  this
+        :~  [%give %fact ~[/frontend-path/[job-id-ta]] cage.sign]
         ==
-        ::
-        [%poke-wire ~]
-      ?~  +.sign
-        ~&  >>  "successful {<-.sign>}"  `this
-      (on-agent:def wire sign)
+      ==
     ==
   ++  on-arvo   on-arvo:def
   ++  on-fail   on-fail:def
   --
 ::  start helper core
 |_  bowl=bowl:gall
-++  handle-action
-  |=  =action:ursr
+++  handle-payload
+  |=  =payload:ursr
   ^-  (quip card _state)
-  ?-    -.action
+  ?-    -.action.payload
       %audio-done
     ~&  >  "got %audio-done"
     :_  state
-    :~  [%give %fact ~[/client-to-provider] %ursr-action !>(action)]
+    :~  [%give %fact ~[/client-to-provider] %ursr-payload !>(payload)]
     ==
     ::
-      %client-start-threads
-    =/  client-args=args-frontend-to-client:ursr  +.action
+      %client-start-job
+    =/  client-args=args-frontend-to-client:ursr  +.action.payload
     ~&  >  "got %client-start-threads request: {<client-args>}"
-    =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
-    =/  receive-args  [~ `receive-tid [our.bowl %ursr-client da+now.bowl] %ursr-client-receive-from-provider !>([provider.client-args])]
-    ~&  >  "starting receive thread {<receive-tid>}"
+    :: =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
+    :: =/  receive-args  [~ `receive-tid [our.bowl %ursr-client da+now.bowl] %ursr-client-receive-from-provider !>([provider.client-args])]
+    :: ~&  >  "starting receive thread {<receive-tid>}"
     :_  state
-    :~  [%pass /poke-wire %agent [provider.client-args %ursr-provider] %poke %ursr-action !>([%provider-start-job [options.client-args receive-tid]])]
-        [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
-        [%give %fact ~[/frontend-path] %ursr-action !>([%client-send-tid receive-tid])]
+    :~  [%pass /poke-wire %agent [provider.client-args %ursr-provider] %poke %ursr-payload !>([job-id.payload %relay-options options.client-args])]
+        [%pass /from-provider/(scot %ud job-id.payload) %agent [provider.client-args %ursr-provider] %watch /provider-to-client/(scot %ud job-id.payload)]
+        :: [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
+        :: [%give %fact ~[/frontend-path] %ursr-action !>([%client-send-tid receive-tid])]
+        :: TODO: notify frontend ready to accept audio?
     ==
     ::
       %relay-audio
-    =/  samples=raw-pcm-ssixteenle-audio:ursr  +.action
     :_  state
-    :~  [%give %fact ~[/client-to-provider] %ursr-action !>([%relay-audio samples])]
+    :~  [%give %fact ~[/client-to-provider/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
     ==
+    :: ::
+    ::   %stop-threads
+    :: =/  receive-tid=@ta  +.action
+    :: ~&  >  "stopping receive thread {<receive-tid>}"
+    :: :_  state
+    :: :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-stop !>([receive-tid %.y])]
+    :: ==
+    :: ::
+    ::   %client-send-tid
+    :: ~&  >>>  "unexpectedly received %client-send-tid; ignoring"  `state
     ::
-      %stop-threads
-    =/  receive-tid=@ta  +.action
-    ~&  >  "stopping receive thread {<receive-tid>}"
-    :_  state
-    :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-stop !>([receive-tid %.y])]
-    ==
-    ::
-      %client-send-tid
-    ~&  >>>  "unexpectedly received %client-send-tid; ignoring"  `state
-    ::
-      %provider-start-job
-    ~&  >>>  "unexpectedly received %provider-start-job; ignoring"  `state
+      %relay-options
+    ~&  >>>  "unexpectedly received %relay-options; ignoring"  `state
     ::
       %relay-reply
     ~&  >>>  "unexpectedly received %relay-reply; ignoring"  `state

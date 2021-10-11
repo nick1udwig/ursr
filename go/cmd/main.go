@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/hosted-fornet/ursr/go/pkg/config"
@@ -69,20 +68,38 @@ func monitorSubscriptionEvents(
 	appSubscription urbit.Result,
 	timeout <-chan time.Time,
 ) (err error) {
-	subscriptionsToJobs := map[uint64]engine.Job{}
+	jobIdsToJobs := map[uint64]engine.Job{}
 	for {
 		select {
 		case event := <-ship.Events():
-			sugar.Debugw(
-				"Got event from ship.",
-				"event", event,
-			)
+			// sugar.Debugw(
+			// 	"Got event from ship.",
+			// 	"event", event,
+			// )
 			switch event.Type {
 			case "diff":
 				if event.ID == appSubscription.ID {
-					go startNewJob(ship, event, subscriptionsToJobs)
-				} else if _, ok := subscriptionsToJobs[event.ID]; ok {
-					go relayAudio(event, subscriptionsToJobs)
+					payload := &ursr.Payload{}
+					err = json.Unmarshal(event.Data, payload)
+					if err != nil {
+						sugar.Errorw(
+							"Trouble reading in app subscription JSON.",
+							"subscriptionId", event.ID,
+							"err", err,
+						)
+						return
+					}
+					if _, ok := jobIdsToJobs[payload.JobId]; ok {
+						go relayAudio(payload, jobIdsToJobs)
+					} else {
+						go startNewJob(ship, payload, jobIdsToJobs)
+					}
+				} else {
+					sugar.Errorw(
+						"Unexpected subscription ID.",
+						"event", event,
+						"expectedAppSubscriptionId", appSubscription.ID,
+					)
 				}
 			default:
 			}
@@ -97,87 +114,46 @@ func monitorSubscriptionEvents(
 	}
 }
 
-func startNewJob(ship *urbit.Client, event *urbit.Event, subscriptionsToJobs map[uint64]engine.Job) (err error) {
-	action := &ursr.Action{}
-	err = json.Unmarshal(event.Data, action)
-	if err != nil {
-		sugar.Errorw(
-			"Trouble reading in app subscription JSON.",
-			"subscriptionId", event.ID,
-			"err", err,
-		)
-		return
-	}
-	args := action.StartJob
-
-	newJob := &engine.Job{ProviderShipTid: args.Tid}
+func startNewJob(ship *urbit.Client, payload *ursr.Payload, jobIdsToJobs map[uint64]engine.Job) (err error) {
+	newJob := &engine.Job{JobId: payload.JobId}
 	err = newJob.DialEngine(config.DefaultEngineUri)
 	if err != nil {
 		sugar.Errorw(
 			"Trouble dialing Engine.",
-			"subscriptionId", event.ID,
+			"jobId", payload.JobId,
 			"err", err,
 		)
 		return
 	}
 
-	err = newJob.SendOptions(args.Options)
+	err = newJob.SendOptions(payload.Action.RelayOptions)
 	if err != nil {
 		sugar.Errorw(
 			"Trouble sending options to Engine.",
-			"subscriptionId", event.ID,
+			"jobId", payload.JobId,
 			"err", err,
 		)
 		return
 	}
 
-	newSubscription, err := subscribe(
-		ship,
-		"spider",
-		fmt.Sprintf("/thread/%v/updates", newJob.ProviderShipTid),
-	)
-	if err != nil {
-		// TODO: Send error to Mars.
-		sugar.Errorw(
-			"Trouble creating new job thread subscription.",
-			"subscriptionId", event.ID,
-			"err", err,
-		)
-		return
-	}
-	sugar.Debugw(
-		"Subscribed to thread.",
-		"path", fmt.Sprintf("/thread/%v/updates", newJob.ProviderShipTid),
-	)
-	subscriptionsToJobs[newSubscription.ID] = *newJob
-	go relayReplies(ship, newJob, newSubscription.ID)
+	jobIdsToJobs[payload.JobId] = *newJob
+	go relayReplies(ship, newJob, payload.JobId)
 	return
 }
 
-func relayAudio(event *urbit.Event, subscriptionsToJobs map[uint64]engine.Job) (err error) {
-	job := subscriptionsToJobs[event.ID]
-	action := &ursr.Action{}
-	err = json.Unmarshal(event.Data, action)
-	if err != nil {
-		sugar.Errorw(
-			"Trouble reading in job thread subscription JSON.",
-			"subscriptionId", event.ID,
-			"job", job,
-			"err", err,
-		)
-		return
-	}
-	if action.AudioDone {
+func relayAudio(payload *ursr.Payload, jobIdsToJobs map[uint64]engine.Job) (err error) {
+	job := jobIdsToJobs[payload.JobId]
+	if payload.Action.AudioDone {
 		sugar.Debugw(
 			"Got audio done signal for job.",
-			"subscriptionId", event.ID,
+			"jobId", payload.JobId,
 		)
-		delete(subscriptionsToJobs, event.ID)
+		delete(jobIdsToJobs, payload.JobId)
 		err = job.SendAudioBytes([]byte(config.AudioDoneSignal))
 		if err != nil {
 			sugar.Errorw(
 				"Trouble sending Engine EOF.",
-				"subscriptionId", event.ID,
+				"jobId", payload.JobId,
 				"job", job,
 				"err", err,
 			)
@@ -185,7 +161,7 @@ func relayAudio(event *urbit.Event, subscriptionsToJobs map[uint64]engine.Job) (
 		return
 	}
 
-	samples := action.RelayAudio
+	samples := payload.Action.RelayAudio
 
 	// https://stackoverflow.com/a/27815101
 	buf := new(bytes.Buffer)
@@ -193,7 +169,7 @@ func relayAudio(event *urbit.Event, subscriptionsToJobs map[uint64]engine.Job) (
 	if err != nil {
 		sugar.Errorw(
 			"Trouble converting audio int16s to bytes.",
-			"subscriptionId", event.ID,
+			"jobId", payload.JobId,
 			"job", job,
 			"err", err,
 		)
@@ -204,7 +180,7 @@ func relayAudio(event *urbit.Event, subscriptionsToJobs map[uint64]engine.Job) (
 	if err != nil {
 		sugar.Errorw(
 			"Trouble sending audio bytes for job.",
-			"subscriptionId", event.ID,
+			"jobId", payload.JobId,
 			"job", job,
 			"err", err,
 		)
@@ -212,69 +188,87 @@ func relayAudio(event *urbit.Event, subscriptionsToJobs map[uint64]engine.Job) (
 	return
 }
 
-func relayReplies(ship *urbit.Client, job *engine.Job, subscriptionId uint64) (err error) {
+func relayReplies(ship *urbit.Client, job *engine.Job, jobId uint64) (err error) {
 	reply, err := job.NextReply()
 	if err != nil {
 		sugar.Errorw(
 			"Trouble reading/parsing reply from Engine.",
-			"subscriptionId", subscriptionId,
+			"jobId", jobId,
 			"err", err,
 		)
 	} else {
 		for reply.Status != "completed" && reply.Status != "failed" {
 			sugar.Debugw(
 				"Got Engine reply.",
-				"subscriptionId", subscriptionId,
+				"jobId", jobId,
 				"reply", *reply,
 			)
 			if reply.Transcript != "" {
 				// TODO: remove this hack
 				if reply.TranscriptFormatted != "" {
-					// replyAction := &ursr.Action{RelayReply: *reply}
-					replyAction := &struct {
+					type ReplyAction struct {
 						RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
-					}{RelayReply: engine.ReplyToUrbitFormat(reply)}
+					}
+					replyPayload := &struct {
+						JobId  uint64      `json:"job-id"`
+						Action ReplyAction `json:"action"`
+					}{
+						JobId: jobId,
+						Action: ReplyAction{
+							RelayReply: engine.ReplyToUrbitFormat(reply),
+						},
+					}
 
-					replyBytes, err := json.Marshal(replyAction)
+					// // replyAction := &ursr.Action{RelayReply: *reply}
+					// replyAction := &struct {
+					// 	RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
+					// }{RelayReply: engine.ReplyToUrbitFormat(reply)}
+
+					// replyBytes, err := json.Marshal(replyAction)
+					replyBytes, err := json.Marshal(replyPayload)
 					if err == nil {
 						pokeResult := ship.PokeShipMark(
 							ship.Name(),
 							config.UrSrProviderAppName,
-							"ursr-action",
+							// "ursr-action",
+							"ursr-payload",
 							replyBytes,
 						)
 						err = pokeResult.Wait()
 						if err != nil {
 							sugar.Errorw(
 								"Failed to relay Engine reply to ship.",
-								"subscriptionId", subscriptionId,
+								"jobId", jobId,
 								"err", err,
 								"ship", ship.Name(),
 								"app", config.UrSrProviderAppName,
 								"mark", "ursr-action",
-								"replyAction", replyAction,
+								// "replyAction", replyAction,
+								"replyPayload", replyPayload,
 								"replyBytes", replyBytes,
 							)
 						} else {
 							sugar.Debugw(
 								"Sent poke to relay Engine reply to ship.",
-								"subscriptionId", subscriptionId,
+								"jobId", jobId,
 								"ship", ship.Name(),
 								"app", config.UrSrProviderAppName,
 								"mark", "ursr-action",
-								"replyAction", replyAction,
+								// "replyAction", replyAction,
+								"replyPayload", replyPayload,
 								"replyBytes", replyBytes,
 							)
 						}
 					} else {
 						sugar.Errorw(
 							"Failed to marshal reply to ship.",
-							"subscriptionId", subscriptionId,
+							"jobId", jobId,
 							"err", err,
 							"ship", ship.Name(),
 							"app", config.UrSrProviderAppName,
 							"mark", "ursr-action",
-							"replyAction", replyAction,
+							// "replyAction", replyAction,
+							"replyPayload", replyPayload,
 						)
 					}
 				}
@@ -283,7 +277,7 @@ func relayReplies(ship *urbit.Client, job *engine.Job, subscriptionId uint64) (e
 			if err != nil {
 				sugar.Errorw(
 					"Failed to get next Engine reply.",
-					"subscriptionId", subscriptionId,
+					"jobId", jobId,
 					"err", err,
 				)
 			}
@@ -292,7 +286,7 @@ func relayReplies(ship *urbit.Client, job *engine.Job, subscriptionId uint64) (e
 		if err != nil {
 			sugar.Errorw(
 				"Trouble closing Engine connection.",
-				"subscriptionId", subscriptionId,
+				"jobId", jobId,
 				"job", job,
 				"err", err,
 			)

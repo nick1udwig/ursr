@@ -22,22 +22,17 @@
   $:  =options
       provider=@p
   ==
-:: Used for:
-:: * Client to provider app (tid is client tid).
-:: * Provider app to middleman (tid is provider tid).
-::
-+$  args-over-network
-  $:  =options
-      tid=@ta
-  ==
 ::
 +$  action
   $%  [%audio-done done=?]
-      [%client-send-tid tid=@ta]
-      [%client-start-threads =args-frontend-to-client]
-      [%provider-start-job =args-over-network]
+      [%client-start-job =args-frontend-to-client]
       [%relay-audio =raw-pcm-ssixteenle-audio]
+      [%relay-options =options]
       [%relay-reply =engine-reply]
-      [%stop-threads tid=@ta]
+  ==
+::
++$  payload
+  $:  job-id=@ud
+      =action
   ==
 --
