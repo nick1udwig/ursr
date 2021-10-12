@@ -80,9 +80,13 @@
         [%from-client @ ~]
       ?+  -.sign  (on-agent:def wire sign)
           %fact
-        :: ~&  >>  "got audio cage from client {<cage.sign>}"
+        =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
         :_  this
+        ?.  =(%audio-done -.action.p)
+          :~  [%give %fact ~[/urth-path] cage.sign]
+          ==
         :~  [%give %fact ~[/urth-path] cage.sign]
+            [%pass /from-client/(scot %ud job-id.p) %agent [src.bowl %ursr-client] %leave ~]
         ==
       ==
     ==
@@ -95,6 +99,11 @@
   |=  =payload:ursr
   ^-  (quip card _state)
   ?-    -.action.payload
+      %job-done
+    :_  state
+    :~  [%give %fact ~[/provider-to-client/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
+    ==
+    ::
       %relay-options
     =/  options=options:ursr  +.action.payload
     ~&  >  "got %provider-start-job request: {<options>}"

@@ -85,7 +85,11 @@
         =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
         =/  job-id-ta=@ta  (scot %ud job-id.p)
         :_  this
+        ?.  =(%job-done -.action.p)
+          :~  [%give %fact ~[/frontend-path/[job-id-ta]] cage.sign]
+          ==
         :~  [%give %fact ~[/frontend-path/[job-id-ta]] cage.sign]
+            [%pass /from-provider/[job-id-ta] %agent [src.bowl %ursr-provider] %leave ~]
         ==
       ==
     ==
@@ -101,7 +105,7 @@
       %audio-done
     ~&  >  "got %audio-done"
     :_  state
-    :~  [%give %fact ~[/client-to-provider] %ursr-payload !>(payload)]
+    :~  [%give %fact ~[/client-to-provider/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
     ==
     ::
       %client-start-job
@@ -117,6 +121,9 @@
     :_  state
     :~  [%give %fact ~[/client-to-provider/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
     ==
+    ::
+      %job-done
+    ~&  >  "unexpectedly received %job-done; ignoring"  `state
     ::
       %relay-options
     ~&  >>>  "unexpectedly received %relay-options; ignoring"  `state

@@ -54,6 +54,11 @@
       :~  [%client-start-threads (args-frontend-to-client +.action)]
       ==
       ::
+        %job-done
+      %-  pairs
+      :~  [%job-done %b +.action]
+      ==
+      ::
         %relay-audio
       %-  pairs
       :~  [%relay-audio (raw-pcm-ssixteenle-audio +.action)]
@@ -129,6 +134,7 @@
     %-  of
     :~  [%audio-done bo]
         [%client-start-job args-frontend-to-client]
+        [%job-done bo]
         [%relay-audio raw-pcm-ssixteenle-audio]
         [%relay-options options]
         [%relay-reply engine-reply]

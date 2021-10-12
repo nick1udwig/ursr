@@ -26,6 +26,7 @@
 +$  action
   $%  [%audio-done done=?]
       [%client-start-job =args-frontend-to-client]
+      [%job-done done=?]
       [%relay-audio =raw-pcm-ssixteenle-audio]
       [%relay-options =options]
       [%relay-reply =engine-reply]
