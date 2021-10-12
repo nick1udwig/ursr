@@ -49,7 +49,7 @@ type Job struct {
 	conn       net.Conn
 	sockReader *bufio.Reader
 
-	ProviderShipTid string
+	JobId uint64
 }
 
 func (e *Job) DialEngine(uri string) (err error) {

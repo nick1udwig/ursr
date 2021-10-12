@@ -6,7 +6,7 @@
     ==
 ::
 +$  state-zero
-    $:  [%0 counter=@]
+    $:  [%0 active=(set @ud)]
     ==
 ::
 +$  card  card:agent:gall
@@ -23,7 +23,7 @@
   ++  on-init
     ^-  (quip card _this)
     ~&  >  '%ursr-provider initialized successfully'
-    =.  state  [%0 0]
+    =.  state  [%0 ~]
     `this
   ++  on-save
     ^-  vase
@@ -37,10 +37,10 @@
     |=  [=mark =vase]
     ^-  (quip card _this)
     ?+    mark  (on-poke:def mark vase)
-        %ursr-action
-      ~&  >>>  !<(action:ursr vase)
+        %ursr-payload
+      ~&  >>>  !<(payload:ursr vase)
       =^  cards  state
-      (handle-action:hc !<(action:ursr vase))
+      (handle-payload:hc !<(payload:ursr vase))
       [cards this]
     ::
         %noun
@@ -58,11 +58,16 @@
     |=  =path
     ^-  (quip card _this)
     ?+     path  (on-watch:def path)
-        [%provider-to-client ~]
-        ~&  >  "got subscription from client"  `this
-        ::
+        [%provider-to-client @ ~]
+      =/  job-id-ta=@ta  -.+.path
+      =/  job-id=@ud  (slav %ud job-id-ta)
+      ~&  >  "got subscription from client; subscribing back {<job-id-ta>}"
+      :_  this(state [%0 (~(put in active.state) job-id)])
+      :~  [%pass /from-client/[job-id-ta] %agent [src.bowl %ursr-client] %watch /client-to-provider/[job-id-ta]]
+      ==
+      ::
         [%urth-path ~]
-        ~&  >  "got subscription from urth backend"  `this
+      ~&  >  "got subscription from urth backend"  `this
     ==
   ++  on-leave
     |=  =path
@@ -72,60 +77,51 @@
     |=  [=wire =sign:agent:gall]
     ^-  (quip card _this)
     ?+    wire  (on-agent:def wire sign)
-        [%counter @ ~]
+        [%from-client @ ~]
       ?+  -.sign  (on-agent:def wire sign)
           %fact
-        =/  val=@  !<(@ q.cage.sign)
-        ~&  >>  "counter val on {<src.bowl>} is {<val>}"
-        `this
+        =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
+        :_  this
+        ?.  =(%audio-done -.action.p)
+          :~  [%give %fact ~[/urth-path] cage.sign]
+          ==
+        :~  [%give %fact ~[/urth-path] cage.sign]
+            [%pass /from-client/(scot %ud job-id.p) %agent [src.bowl %ursr-client] %leave ~]
         ==
-        ::
-        [%poke-wire ~]
-      ?~  +.sign
-        ~&  >>  "successful {<-.sign>}"  `this
-      (on-agent:def wire sign)
+      ==
     ==
   ++  on-arvo   on-arvo:def
   ++  on-fail   on-fail:def
   --
 :: start helper core
 |_  bowl=bowl:gall
-++  handle-action
-  |=  =action:ursr
+++  handle-payload
+  |=  =payload:ursr
   ^-  (quip card _state)
-  ?-    -.action
-      %provider-start-job
-    =/  client-args=args-over-network:ursr  +.action
-    ~&  >  "got %provider-start-job request: {<client-args>}"
-    =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
-    =/  receive-args  [~ `receive-tid [our.bowl %ursr-provider da+now.bowl] %ursr-provider-receive-from-client !>([src.bowl])]
-    ~&  >  "starting receive thread {<receive-tid>}"
+  ?-    -.action.payload
+      %job-done
     :_  state
-    :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
-        [%give %fact ~[/urth-path] %ursr-action !>([%provider-start-job [options.client-args receive-tid]])]
+    :~  [%give %fact ~[/provider-to-client/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
+    ==
+    ::
+      %relay-options
+    =/  options=options:ursr  +.action.payload
+    ~&  >  "got %provider-start-job request: {<options>}"
+    :_  state
+    :~  [%give %fact ~[/urth-path] %ursr-payload !>([job-id.payload %relay-options options])]
     ==
     ::
       %relay-reply
-    ~&  >  "got %relay-reply request: {<+.action>}"
+    ~&  >  "got %relay-reply request: {<+.action.payload>}"
     :_  state
-    :~  [%give %fact ~[/provider-to-client] %ursr-action !>(action)]
-    ==
-    ::
-      %stop-threads
-    =/  receive-tid=@ta  +.action
-    ~&  >  "stopping receive thread {<receive-tid>}"
-    :_  state
-    :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-stop !>([receive-tid %.y])]
+    :~  [%give %fact ~[/provider-to-client/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
     ==
     ::
       %audio-done
     ~&  >  "unexpectedly received %audio-done; ignoring"  `state
     ::
-      %client-send-tid
-    ~&  >  "unexpectedly received %client-send-tid; ignoring"  `state
-    ::
-      %client-start-threads
-    ~&  >  "unexpectedly received %client-start-threads; ignoring"  `state
+      %client-start-job
+    ~&  >  "unexpectedly received %client-start-job; ignoring"  `state
     ::
       %relay-audio
     ~&  >  "unexpectedly received %relay-audio; ignoring"  `state

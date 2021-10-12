@@ -1,7 +1,7 @@
 :~  title+'UrSR Demo Notebook'
     info+'Simple voice notes app to demo UrSR'
     color+0x4b.4b4b
-    glob-http+['https://raw.githubusercontent.com/hosted-fornet/ursr/8ac2e026f1d9cd7769b45bfc5964e9cc58450e12/globs/glob-0v7.r97ga.hp1m5.tm96j.98m49.m322a.glob' 0v7.r97ga.hp1m5.tm96j.98m49.m322a]
+    glob-http+['https://raw.githubusercontent.com/hosted-fornet/ursr/bcd9753be21492f5050b1c7262ab2856fc5f3321/globs/glob-0v4.66ld2.v37qf.akact.v4urj.ut5ro.glob' 0v4.66ld2.v37qf.akact.v4urj.ut5ro]
     image+'https://raw.githubusercontent.com/hosted-fornet/ursr/59830883ee41c02825dc1e946e1fb755ff9f457b/images/211002-ursr-demo.png'
     base+'ursr-demo'
     version+[0 0 0]
