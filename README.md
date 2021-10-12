@@ -46,7 +46,7 @@ Then, open the UrSR Demo Notebook app by clicking the tile in Grid.
 For the `Provider` field, fill in
 
 ```
-~hoster-hosted-fornet
+~hoster-hosted-labweb
 ```
 
 which is my UrSR Provider ship.
