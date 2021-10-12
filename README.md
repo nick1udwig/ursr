@@ -102,8 +102,7 @@ Hit me up at `~hosted-fornet` or come chat in
 Since you are sending your audio to a provider to transcribe,
 you should not send sensitive audio to people you don't trust.
 There is nothing stopping a sketchy provider from keeping your
-audio and your transcripts, though they would have to write
-their own software to do so.
+audio and your transcripts.
 If you have sensitive audio you wish to transcribe, you should
 set up your own provider node and use that.
 
