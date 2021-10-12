@@ -1,313 +1,332 @@
 <html>
     <head>
+        UrSR Demo Notebook
     </head>
     <body>
-        <input type="text" id="provider" name="provider" placeholder="Provider (e.g. '~wes')." />
-        <input type="text" id="code" name="code" placeholder="Client ship code (e.g. 'ropnys-batwyd-nossyt-mapwet')" />
-        <input type="text" id="chat" name="chat" placeholder="Chat to post transcripts to (e.g. 'my-voice-notes')" />
+        <br /><br />
+        Transcribe from your microphone to an Urbit chat.
+        <br /><br />
+        Usage:
+        <br />
+        Input a provider ship, running %ursr-provider and connected to the
+        golang middleman and the Engine, your ship's +code,
+        and, optionally, a chat on your ship to post transcripts to.
+        <br /><br />
+        <input type="text" id="provider" name="provider" placeholder="Provider (e.g. '~wes')" />
+        <input type="text" id="code" name="code" placeholder="Client ship +code" />
+        <input type="text" id="chat" name="chat" placeholder="Chat (e.g. 'my-voice-notes')" />
         <br /><br />
 
         <button id="sendBtn">Send</button>
         <button id="stopBtn">Stop</button>
 
         <script>
-        // Poor man's import
-        class Channel {
-          constructor() {
-            this.init();
-            this.deleteOnUnload();
+            // Poor man's import
+            class Channel {
+              constructor() {
+                this.init();
+                this.deleteOnUnload();
 
-            //  a way to handle channel errors
-            //
-            //
-            this.onChannelError = (err) => {
-              console.error('event source error: ', err);
-            };
-            this.onChannelOpen = (e) => {
-              console.log('open', e);
-            };
-          }
-
-          init() {
-            this.debounceInterval = 500;
-            //  unique identifier: current time and random number
-            //
-            this.uid =
-              new Date().getTime().toString() +
-              "-" +
-              Math.random().toString(16).slice(-6);
-
-            this.requestId = 1;
-
-            //  the currently connected EventSource
-            //
-            this.eventSource = null;
-
-            //  the id of the last EventSource event we received
-            //
-            this.lastEventId = 0;
-
-            //  this last event id acknowledgment sent to the server
-            //
-            this.lastAcknowledgedEventId = 0;
-
-            //  a registry of requestId to successFunc/failureFunc
-            //
-            //    These functions are registered during a +poke and are executed
-            //    in the onServerEvent()/onServerError() callbacks. Only one of
-            //    the functions will be called, and the outstanding poke will be
-            //    removed after calling the success or failure function.
-            //
-
-            this.outstandingPokes = new Map();
-
-            //  a registry of requestId to subscription functions.
-            //
-            //    These functions are registered during a +subscribe and are
-            //    executed in the onServerEvent()/onServerError() callbacks. The
-            //    event function will be called whenever a new piece of data on this
-            //    subscription is available, which may be 0, 1, or many times. The
-            //    disconnect function may be called exactly once.
-            //
-            this.outstandingSubscriptions = new Map();
-
-            this.outstandingJSON = [];
-
-            this.debounceTimer = null;
-          }
-
-          resetDebounceTimer() {
-            if (this.debounceTimer) {
-              clearTimeout(this.debounceTimer);
-              this.debounceTimer = null;
-            }
-            this.debounceTimer = setTimeout(() => {
-              this.sendJSONToChannel();
-            }, this.debounceInterval)
-          }
-
-          setOnChannelError(onError = (err) => {}) {
-            this.onChannelError = onError;
-          }
-
-          setOnChannelOpen(onOpen = (e) => {}) {
-            this.onChannelOpen = onOpen;
-          }
-
-          deleteOnUnload() {
-            window.addEventListener("beforeunload", (event) => {
-              this.delete();
-            });
-          }
-
-          clearQueue() {
-            clearTimeout(this.debounceTimer);
-            this.debounceTimer = null;
-            this.sendJSONToChannel();
-          }
-
-          //  sends a poke to an app on an urbit ship
-          //
-          poke(ship, app, mark, json, successFunc, failureFunc) {
-            let id = this.nextId();
-            this.outstandingPokes.set(
-              id,
-              {
-                success: successFunc,
-                fail: failureFunc
-              }
-            );
-
-            const j = {
-              id,
-              action: "poke",
-              ship,
-              app,
-              mark,
-              json
-            };
-
-            this.sendJSONToChannel(j);
-          }
-
-          //  subscribes to a path on an specific app and ship.
-          //
-          //    Returns a subscription id, which is the same as the same internal id
-          //    passed to your Urbit.
-          subscribe(
-              ship,
-              app,
-              path,
-              connectionErrFunc = () => {},
-              eventFunc = () => {},
-              quitFunc = () => {},
-              subAckFunc = () => {},
-          ) {
-            let id = this.nextId();
-            this.outstandingSubscriptions.set(
-              id,
-              {
-                err: connectionErrFunc,
-                event: eventFunc,
-                quit: quitFunc,
-                subAck: subAckFunc
-              }
-            );
-
-            const json = {
-              id,
-              action: "subscribe",
-              ship,
-              app,
-              path
-            }
-
-            this.resetDebounceTimer();
-
-            this.outstandingJSON.push(json);
-            return id;
-          }
-
-          //  quit the channel
-          //
-          delete() {
-            let id = this.nextId();
-            clearInterval(this.ackTimer);
-            navigator.sendBeacon(this.channelURL(), JSON.stringify([{
-              id,
-              action: "delete"
-            }]));
-            if (this.eventSource) {
-              this.eventSource.close();
-            }
-          }
-
-          //  unsubscribe to a specific subscription
-          //
-          unsubscribe(subscription) {
-            let id = this.nextId();
-            this.sendJSONToChannel({
-              id,
-              action: "unsubscribe",
-              subscription
-            });
-          }
-
-          //  sends a JSON command command to the server.
-          //
-          sendJSONToChannel(j) {
-            let req = new XMLHttpRequest();
-            req.open("PUT", this.channelURL());
-            req.setRequestHeader("Content-Type", "application/json");
-
-            if (this.lastEventId == this.lastAcknowledgedEventId) {
-              if (j) {
-                this.outstandingJSON.push(j);
+                //  a way to handle channel errors
+                //
+                //
+                this.onChannelError = (err) => {
+                  console.error('event source error: ', err);
+                };
+                this.onChannelOpen = (e) => {
+                  console.log('open', e);
+                };
               }
 
-              if (this.outstandingJSON.length > 0) {
-                let x = JSON.stringify(this.outstandingJSON);
-                req.send(x);
+              init() {
+                this.debounceInterval = 500;
+                //  unique identifier: current time and random number
+                //
+                this.uid =
+                  new Date().getTime().toString() +
+                  "-" +
+                  Math.random().toString(16).slice(-6);
+
+                this.requestId = 1;
+
+                //  the currently connected EventSource
+                //
+                this.eventSource = null;
+
+                //  the id of the last EventSource event we received
+                //
+                this.lastEventId = 0;
+
+                //  this last event id acknowledgment sent to the server
+                //
+                this.lastAcknowledgedEventId = 0;
+
+                //  a registry of requestId to successFunc/failureFunc
+                //
+                //    These functions are registered during a +poke and are executed
+                //    in the onServerEvent()/onServerError() callbacks. Only one of
+                //    the functions will be called, and the outstanding poke will be
+                //    removed after calling the success or failure function.
+                //
+
+                this.outstandingPokes = new Map();
+
+                //  a registry of requestId to subscription functions.
+                //
+                //    These functions are registered during a +subscribe and are
+                //    executed in the onServerEvent()/onServerError() callbacks. The
+                //    event function will be called whenever a new piece of data on this
+                //    subscription is available, which may be 0, 1, or many times. The
+                //    disconnect function may be called exactly once.
+                //
+                this.outstandingSubscriptions = new Map();
+
+                this.outstandingJSON = [];
+
+                this.debounceTimer = null;
               }
-            } else {
-              //  we add an acknowledgment to clear the server side queue
+
+              resetDebounceTimer() {
+                if (this.debounceTimer) {
+                  clearTimeout(this.debounceTimer);
+                  this.debounceTimer = null;
+                }
+                this.debounceTimer = setTimeout(() => {
+                  this.sendJSONToChannel();
+                }, this.debounceInterval)
+              }
+
+              setOnChannelError(onError = (err) => {}) {
+                this.onChannelError = onError;
+              }
+
+              setOnChannelOpen(onOpen = (e) => {}) {
+                this.onChannelOpen = onOpen;
+              }
+
+              deleteOnUnload() {
+                window.addEventListener("beforeunload", (event) => {
+                  this.delete();
+                });
+              }
+
+              clearQueue() {
+                clearTimeout(this.debounceTimer);
+                this.debounceTimer = null;
+                this.sendJSONToChannel();
+              }
+
+              //  sends a poke to an app on an urbit ship
               //
-              //    The server side puts messages it sends us in a queue until we
-              //    acknowledge that we received it.
-              //
-              let payload = [
-                ...this.outstandingJSON,
-                {action: "ack", "event-id": this.lastEventId}
-              ];
-              if (j) {
-                payload.push(j)
+              poke(ship, app, mark, json, successFunc, failureFunc) {
+                let id = this.nextId();
+                this.outstandingPokes.set(
+                  id,
+                  {
+                    success: successFunc,
+                    fail: failureFunc
+                  }
+                );
+
+                const j = {
+                  id,
+                  action: "poke",
+                  ship,
+                  app,
+                  mark,
+                  json
+                };
+
+                this.sendJSONToChannel(j);
               }
-              let x = JSON.stringify(payload);
-              req.send(x);
 
-              this.lastAcknowledgedEventId = this.lastEventId;
-            }
-            this.outstandingJSON = [];
+              //  subscribes to a path on an specific app and ship.
+              //
+              //    Returns a subscription id, which is the same as the same internal id
+              //    passed to your Urbit.
+              subscribe(
+                  ship,
+                  app,
+                  path,
+                  connectionErrFunc = () => {},
+                  eventFunc = () => {},
+                  quitFunc = () => {},
+                  subAckFunc = () => {},
+              ) {
+                let id = this.nextId();
+                this.outstandingSubscriptions.set(
+                  id,
+                  {
+                    err: connectionErrFunc,
+                    event: eventFunc,
+                    quit: quitFunc,
+                    subAck: subAckFunc
+                  }
+                );
 
-            this.connectIfDisconnected();
-          }
+                const json = {
+                  id,
+                  action: "subscribe",
+                  ship,
+                  app,
+                  path
+                }
 
-          //  connects to the EventSource if we are not currently connected
-          //
-          connectIfDisconnected() {
-            if (this.eventSource) {
-              return;
-            }
+                this.resetDebounceTimer();
 
-            this.eventSource = new EventSource(this.channelURL(), {withCredentials:true});
-            this.eventSource.onmessage = e => {
-              this.lastEventId = parseInt(e.lastEventId, 10);
+                this.outstandingJSON.push(json);
+                return id;
+              }
 
-              let obj = JSON.parse(e.data);
-              let pokeFuncs = this.outstandingPokes.get(obj.id);
-              let subFuncs = this.outstandingSubscriptions.get(obj.id);
+              //  quit the channel
+              //
+              delete() {
+                let id = this.nextId();
+                clearInterval(this.ackTimer);
+                navigator.sendBeacon(this.channelURL(), JSON.stringify([{
+                  id,
+                  action: "delete"
+                }]));
+                if (this.eventSource) {
+                  this.eventSource.close();
+                }
+              }
 
-              if (obj.response == "poke" && !!pokeFuncs) {
-                let funcs = pokeFuncs;
-                if (obj.hasOwnProperty("ok")) {
-                  funcs["success"]();
-                } else if (obj.hasOwnProperty("err")) {
-                  funcs["fail"](obj.err);
+              //  unsubscribe to a specific subscription
+              //
+              unsubscribe(subscription) {
+                let id = this.nextId();
+                this.sendJSONToChannel({
+                  id,
+                  action: "unsubscribe",
+                  subscription
+                });
+              }
+
+              //  sends a JSON command command to the server.
+              //
+              sendJSONToChannel(j) {
+                let req = new XMLHttpRequest();
+                req.open("PUT", this.channelURL());
+                req.setRequestHeader("Content-Type", "application/json");
+
+                if (this.lastEventId == this.lastAcknowledgedEventId) {
+                  if (j) {
+                    this.outstandingJSON.push(j);
+                  }
+
+                  if (this.outstandingJSON.length > 0) {
+                    let x = JSON.stringify(this.outstandingJSON);
+                    req.send(x);
+                  }
                 } else {
-                  console.error("Invalid poke response: ", obj);
-                }
-                this.outstandingPokes.delete(obj.id);
+                  //  we add an acknowledgment to clear the server side queue
+                  //
+                  //    The server side puts messages it sends us in a queue until we
+                  //    acknowledge that we received it.
+                  //
+                  let payload = [
+                    ...this.outstandingJSON,
+                    {action: "ack", "event-id": this.lastEventId}
+                  ];
+                  if (j) {
+                    payload.push(j)
+                  }
+                  let x = JSON.stringify(payload);
+                  req.send(x);
 
-              } else if (obj.response == "subscribe" ||
-                        (obj.response == "poke" && !!subFuncs)) {
-                let funcs = subFuncs;
-
-                if (obj.hasOwnProperty("err")) {
-                  funcs["err"](obj.err);
-                  this.outstandingSubscriptions.delete(obj.id);
-                } else if (obj.hasOwnProperty("ok")) {
-                  funcs["subAck"](obj);
+                  this.lastAcknowledgedEventId = this.lastEventId;
                 }
-              } else if (obj.response == "diff") {
-                // ensure we ack before channel clogs
-                if((this.lastEventId - this.lastAcknowledgedEventId) > 30) {
-                  this.clearQueue();
+                this.outstandingJSON = [];
+
+                this.connectIfDisconnected();
+              }
+
+              //  connects to the EventSource if we are not currently connected
+              //
+              connectIfDisconnected() {
+                if (this.eventSource) {
+                  return;
                 }
 
-                let funcs = subFuncs;
-                funcs["event"](obj.json);
-              } else if (obj.response == "quit") {
-                let funcs = subFuncs;
-                funcs["quit"](obj);
-                this.outstandingSubscriptions.delete(obj.id);
-              } else {
-                console.log("Unrecognized response: ", e);
+                this.eventSource = new EventSource(this.channelURL(), {withCredentials:true});
+                this.eventSource.onmessage = e => {
+                  this.lastEventId = parseInt(e.lastEventId, 10);
+
+                  let obj = JSON.parse(e.data);
+                  let pokeFuncs = this.outstandingPokes.get(obj.id);
+                  let subFuncs = this.outstandingSubscriptions.get(obj.id);
+
+                  if (obj.response == "poke" && !!pokeFuncs) {
+                    let funcs = pokeFuncs;
+                    if (obj.hasOwnProperty("ok")) {
+                      funcs["success"]();
+                    } else if (obj.hasOwnProperty("err")) {
+                      funcs["fail"](obj.err);
+                    } else {
+                      console.error("Invalid poke response: ", obj);
+                    }
+                    this.outstandingPokes.delete(obj.id);
+
+                  } else if (obj.response == "subscribe" ||
+                            (obj.response == "poke" && !!subFuncs)) {
+                    let funcs = subFuncs;
+
+                    if (obj.hasOwnProperty("err")) {
+                      funcs["err"](obj.err);
+                      this.outstandingSubscriptions.delete(obj.id);
+                    } else if (obj.hasOwnProperty("ok")) {
+                      funcs["subAck"](obj);
+                    }
+                  } else if (obj.response == "diff") {
+                    // ensure we ack before channel clogs
+                    if((this.lastEventId - this.lastAcknowledgedEventId) > 30) {
+                      this.clearQueue();
+                    }
+
+                    let funcs = subFuncs;
+                    funcs["event"](obj.json);
+                  } else if (obj.response == "quit") {
+                    let funcs = subFuncs;
+                    funcs["quit"](obj);
+                    this.outstandingSubscriptions.delete(obj.id);
+                  } else {
+                    console.log("Unrecognized response: ", e);
+                  }
+                }
+
+                this.eventSource.onopen = this.onChannelOpen;
+
+                this.eventSource.onerror = e => {
+                  this.delete();
+                  this.init();
+                  this.onChannelError(e);
+                }
+              }
+
+              channelURL() {
+                return "/~/channel/" + this.uid;
+              }
+
+              nextId() {
+                return this.requestId++;
               }
             }
 
-            this.eventSource.onopen = this.onChannelOpen;
-
-            this.eventSource.onerror = e => {
-              this.delete();
-              this.init();
-              this.onChannelError(e);
-            }
-          }
-
-          channelURL() {
-            return "/~/channel/" + this.uid;
-          }
-
-          nextId() {
-            return this.requestId++;
-          }
-        }
-
-        window.channel = Channel;
+            window.channel = Channel;
 
 
+            // messagesPerChunk is a tradeoff:
+            //  too small and the poke spam slows down ship communication,
+            //  restricting the speed at which replies can make it through.
+            //  Too large, and delay will be introduced by waiting for a chunk
+            //  to be completed before sending off.
+            //  Need to send 32kB/s for 16kHz audio.
+            //  messagesPerChunk of 10 leads to pokes of ~2.5kB (or ~12 pokes/s)
+            //  while a value of 100 leads to ~25kB (~1.2 pokes/s).
+            //  On fake ships I have noticed 10 leads to 2-way communication issues.
+            const messagesPerChunk = 100;
             const rate = 16000;
-            const messagesPerChunk = 10;
             let audioCtx;
             let audioStream;
             let jobId;
@@ -414,7 +433,7 @@
                         }
                         processorNode.onprocessorerror = (error) => {
                           console.log(`Processor node error: ${error}`);
-                          // stopRecording();
+                          stopRecording();
                           // createNewMessage(
                           //   "The microphone audio data was not in the expected [-1,+1] range as floating point. "
                           //   + "Please refer to xkcd.com/2200",
@@ -430,24 +449,26 @@
                     Close the microphone streaming process and send a final message to Mars
                     to close.
                  */
+                if (audioCtx || audioStream) {
+                    window.urb.poke(
+                        window.ship,
+                        "ursr-client",
+                        "ursr-payload",
+                        {
+                            "job-id": jobId,
+                            "action": {
+                                "audio-done": true
+                            }
+                        },
+                        () => console.log("Sent poke to signal audio done sending."),
+                        (err) => console.log(`Poke failed: ${err}`),
+                    );
+                }
                 if (audioCtx) {
                     if (audioCtx.state !== "closed") {
                         audioCtx.close();
                     }
                 }
-                window.urb.poke(
-                    window.ship,
-                    "ursr-client",
-                    "ursr-payload",
-                    {
-                        "job-id": jobId,
-                        "action": {
-                            "audio-done": true
-                        }
-                    },
-                    () => console.log("Sent poke to signal audio done sending."),
-                    (err) => console.log(`Poke failed: ${err}`),
-                );
                 if (audioStream) {
                     audioStream.getAudioTracks().forEach((track) => track.stop());
                     audioStream = undefined;
@@ -458,38 +479,40 @@
 
             let postMessageIndex = 1;
             const postMessage = async(chatResource, message) => {
-                currentTimeMicroseconds = performance.timeOrigin + performance.now();
-                pokeObj = {
-                    "add-nodes": {
-                        "resource": {
-                            "ship": `~${window.ship}`,
-                            "name": `${chatResource}`,
-                        },
-                        "nodes": {
-                            [`/${postMessageIndex}`]: {
-                                "post": {
-                                    "author": `~${window.ship}`,
-                                    "index": `/${postMessageIndex}`,
-                                    "time-sent": parseInt(`${currentTimeMicroseconds}`),
-                                    "contents": [{"text": `${message}`}],
-                                    "hash": null,
-                                    "signatures": [],
+                if (chatResource !== "") {
+                    currentTimeMicroseconds = performance.timeOrigin + performance.now();
+                    pokeObj = {
+                        "add-nodes": {
+                            "resource": {
+                                "ship": `~${window.ship}`,
+                                "name": `${chatResource}`,
+                            },
+                            "nodes": {
+                                [`/${postMessageIndex}`]: {
+                                    "post": {
+                                        "author": `~${window.ship}`,
+                                        "index": `/${postMessageIndex}`,
+                                        "time-sent": parseInt(`${currentTimeMicroseconds}`),
+                                        "contents": [{"text": `${message}`}],
+                                        "hash": null,
+                                        "signatures": [],
+                                    },
+                                    "children": null,
                                 },
-                                "children": null,
                             },
                         },
-                    },
-                };
-                console.log(`sending audio to chat with: ${JSON.stringify(pokeObj)}`);
-                window.urb.poke(
-                    window.ship,
-                    "graph-push-hook",
-                    "graph-update-3",
-                    pokeObj,
-                    () => console.log("Sent poke to post transcript to chat."),
-                    (err) => console.log(`Poke failed: ${err}`),
-                );
-                postMessageIndex += 1;
+                    };
+                    console.log(`sending audio to chat with: ${JSON.stringify(pokeObj)}`);
+                    window.urb.poke(
+                        window.ship,
+                        "graph-push-hook",
+                        "graph-update-3",
+                        pokeObj,
+                        () => console.log("Sent poke to post transcript to chat."),
+                        (err) => console.log(`Poke failed: ${err}`),
+                    );
+                    postMessageIndex += 1;
+                }
             };
 
 
@@ -510,9 +533,21 @@
                 console.log(`Logged in to ${window.ship}.`);
             };
 
-            const handleFactsFromApp = async (fact) => {
-                console.log(`Got Engine reply: ${JSON.stringify(fact)}.`);
-                postMessage(chatResource, fact["action"]["relay-reply"]["transcript-formatted"]);
+            const handleFactsFromApp = async (fact, appSubscription) => {
+                console.log(`Got reply: ${JSON.stringify(fact)}.`);
+                if (fact["action"].hasOwnProperty("relay-reply")) {
+                    if (fact["action"]["relay-reply"].hasOwnProperty("transcript-formatted")) {
+                        postMessage(chatResource, fact["action"]["relay-reply"]["transcript-formatted"]);
+                    } else if (fact["action"]["relay-reply"].hasOwnProperty("transcript")) {
+                        postMessage(chatResource, fact["action"]["relay-reply"]["transcript"]);
+                    } else {
+                        console.log("Unexpected relay-reply from app.");
+                    }
+                } else if (fact["action"].hasOwnProperty("job-done")) {
+                    await unsubscribeFromApp(appSubscription);
+                } else {
+                    console.log("Unexpected fact type from app.");
+                }
             };
 
             const unsubscribeFromApp = async (appSubscription) => {
@@ -521,11 +556,11 @@
             };
 
             const sendAudioToApp = async () => {
-                console.log("Sending audio to thread...");
                 if (!audioStream) {
+                    console.log("Sending audio to thread...");
                     audioStream = await navigator.mediaDevices.getUserMedia({audio: true});
+                    createStreamingAudio();
                 }
-                createStreamingAudio();
             };
 
             const uintToUrbitStyle = (number) => {
@@ -562,53 +597,65 @@
             });
 
             sendButton.addEventListener("click", async () => {
-                jobId = Math.floor(Math.random() * 1000000000);
-                jobIdUrbitStyle = uintToUrbitStyle(jobId);
-                console.log(`Job id, urbit style: ${jobId}, ${jobIdUrbitStyle}`);
-                let provider = document.getElementById("provider").value;
-                if (provider == "") {
-                    provider = "~wes";
-                }
-                let code = document.getElementById("code").value;
-                chatResource = document.getElementById("chat").value;
-                await login(code);
+                if (!audioStream) {
+                    jobId = Math.floor(Math.random() * 1000000000);
+                    jobIdUrbitStyle = uintToUrbitStyle(jobId);
+                    console.log(`Job id, urbit style: ${jobId}, ${jobIdUrbitStyle}`);
+                    let provider = document.getElementById("provider").value;
+                    if (provider === "") {
+                        console.log("You must input a provider ship.");
+                        return;
+                    }
+                    let code = document.getElementById("code").value;
+                    if (code === "") {
+                        console.log("You must input your client ship's +code.");
+                        return;
+                    }
+                    chatResource = document.getElementById("chat").value;
+                    if (chatResource === "") {
+                        console.log("No chat given; transcripts will not be posted.");
+                    }
+                    await login(code);
 
-                // Tell client app to start threads;
-                //  read TIDs from client app.
-                let appSubscription = window.urb.subscribe(
-                    window.ship,
-                    "ursr-client",
-                    `/frontend-path/${jobIdUrbitStyle}`,
-                    (err) => console.log(`ursr-client: Couldn't subscribe: ${err}.`),
-                    (data) => handleFactsFromApp(data),
-                    (quit) => console.log("ursr-client: Closed subscription."),
-                );
+                    // Tell client app to start threads;
+                    //  read TIDs from client app.
+                    let appSubscription = window.urb.subscribe(
+                        window.ship,
+                        "ursr-client",
+                        `/frontend-path/${jobIdUrbitStyle}`,
+                        (err) => console.log(`ursr-client: Couldn't subscribe: ${err}.`),
+                        (data) => handleFactsFromApp(data, appSubscription),
+                        (quit) => console.log("ursr-client: Closed subscription."),
+                    );
 
-                sendAudioToApp();
+                    sendAudioToApp();
 
-                // Send options for request.
-                window.urb.poke(
-                    window.ship,
-                    "ursr-client",
-                    "ursr-payload",
-                    {
-                        "job-id": jobId,
-                        "action": {
-                            "client-start-job": {
-                                "options": {
-                                    "command": "recognize",
-                                    "format": "raw",
-                                    "encoding": "pcm_s16le",
-                                    "rate": rate,
-                                    "transcript-formatted": true
-                                },
-                                "provider": provider
+                    // Send options for request.
+                    window.urb.poke(
+                        window.ship,
+                        "ursr-client",
+                        "ursr-payload",
+                        {
+                            "job-id": jobId,
+                            "action": {
+                                "client-start-job": {
+                                    "options": {
+                                        "command": "recognize",
+                                        "format": "raw",
+                                        "encoding": "pcm_s16le",
+                                        "rate": rate,
+                                        "transcript-formatted": true
+                                    },
+                                    "provider": provider
+                                }
                             }
-                        }
-                    },
-                    () => console.log("Sent poke to start client threads."),
-                    (err) => console.log(`Poke failed: ${err}`),
-                );
+                        },
+                        () => console.log("Sent poke to start client threads."),
+                        (err) => console.log(`Poke failed: ${err}`),
+                    );
+                } else {
+                    console.log("Already running.");
+                }
             });
         </script>
     </body>
