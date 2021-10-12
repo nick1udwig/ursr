@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"flag"
 	"time"
 
 	"github.com/hosted-fornet/ursr/go/pkg/config"
@@ -116,7 +117,7 @@ func monitorSubscriptionEvents(
 
 func startNewJob(ship *urbit.Client, payload *ursr.Payload, jobIdsToJobs map[uint64]engine.Job) (err error) {
 	newJob := &engine.Job{JobId: payload.JobId}
-	err = newJob.DialEngine(config.DefaultEngineUri)
+	err = newJob.DialEngine(config.EngineUri)
 	if err != nil {
 		sugar.Errorw(
 			"Trouble dialing Engine.",
@@ -207,19 +208,12 @@ func relayReplies(ship *urbit.Client, job *engine.Job, jobId uint64) (err error)
 			if reply.Transcript != "" {
 				// TODO: remove this hack
 				if reply.TranscriptFormatted != "" {
-					type ReplyAction struct {
-						RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
-					}
-					replyPayload := &struct {
-						JobId  uint64      `json:"job-id"`
-						Action ReplyAction `json:"action"`
-					}{
+					replyPayload := &ursr.ReplyPayload{
 						JobId: jobId,
-						Action: ReplyAction{
+						Action: ursr.ReplyAction{
 							RelayReply: engine.ReplyToUrbitFormat(reply),
 						},
 					}
-
 					replyBytes, err := json.Marshal(replyPayload)
 					if err == nil {
 						pokeResult := ship.PokeShipMark(
@@ -273,6 +267,45 @@ func relayReplies(ship *urbit.Client, job *engine.Job, jobId uint64) (err error)
 				)
 			}
 		}
+		jobDonePayload := &ursr.JobDonePayload{
+			JobId: jobId,
+			Action: ursr.JobDoneAction{
+				JobDone: reply.Status == "completed",
+			},
+		}
+		jobDoneBytes, err := json.Marshal(jobDonePayload)
+		if err == nil {
+			pokeResult := ship.PokeShipMark(
+				ship.Name(),
+				config.UrSrProviderAppName,
+				"ursr-payload",
+				jobDoneBytes,
+			)
+			err = pokeResult.Wait()
+			if err != nil {
+				sugar.Errorw(
+					"Failed to relay Engine job done to ship.",
+					"jobId", jobId,
+					"err", err,
+					"ship", ship.Name(),
+					"app", config.UrSrProviderAppName,
+					"mark", "ursr-action",
+					"jobDonePayload", jobDonePayload,
+					"jobDoneBytes", jobDoneBytes,
+				)
+			}
+		} else {
+			sugar.Errorw(
+				"Failed to marshal job done to ship.",
+				"jobId", jobId,
+				"err", err,
+				"ship", ship.Name(),
+				"app", config.UrSrProviderAppName,
+				"mark", "ursr-action",
+				"jobDonePayload", jobDonePayload,
+			)
+		}
+
 		err = job.Close()
 		if err != nil {
 			sugar.Errorw(
@@ -286,17 +319,57 @@ func relayReplies(ship *urbit.Client, job *engine.Job, jobId uint64) (err error)
 	return
 }
 
+func parseArgs() {
+	engineUri := flag.String(
+		"engine",
+		config.DefaultEngineUri,
+		"The Engine URI.",
+	)
+	shipUri := flag.String(
+		"ship",
+		config.DefaultShipUri,
+		"The provider ship URI.",
+	)
+	passcode := flag.String(
+		"code",
+		config.DefaultPasscode,
+		"+code to the provider ship (default ship: ~wes).",
+	)
+	shipSubShutdownTimeout := flag.Int(
+		"ttl",
+		60,
+		"Number of seconds to connect provider to Engine (non-positive: forever).",
+	)
+
+	flag.Parse()
+
+	config.EngineUri = *engineUri
+	config.ShipUri = *shipUri
+	config.Passcode = *passcode
+	config.ShipSubShutdownTimeout = time.Duration(*shipSubShutdownTimeout) * time.Second
+
+	sugar.Infow(
+		"Parsed args.",
+		"engine", config.EngineUri,
+		"ship", config.ShipUri,
+		"code", "elided",
+		"ttl", config.ShipSubShutdownTimeout,
+	)
+}
+
 func main() {
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 	sugar = logger.Sugar()
 	sugar.Debugw("Initialized logger.")
 
-	ship, err := urbit.Dial(config.Address, config.Passcode, nil)
+	parseArgs()
+
+	ship, err := urbit.Dial(config.ShipUri, config.Passcode, nil)
 	if err != nil {
 		sugar.Errorw(
 			"Failed to connect with ship.",
-			"address", config.Address,
+			"shipUri", config.ShipUri,
 			"err", err,
 		)
 		return
@@ -304,7 +377,7 @@ func main() {
 	sugar.Debugw(
 		"Connected to ship.",
 		"name", ship.Name(),
-		"address", config.Address,
+		"shipUri", config.ShipUri,
 	)
 
 	appSubscription, err := subscribe(
@@ -323,11 +396,16 @@ func main() {
 		"appSubscriptionId", appSubscription.ID,
 	)
 
-	timeout := time.After(config.ShipSubShutdownTimeout)
-	sugar.Debugw(
-		"Monitoring events until timeout reached.",
-		"timeoutSeconds", config.ShipSubShutdownTimeout.Seconds(),
-	)
+	var timeout <-chan time.Time
+	if config.ShipSubShutdownTimeout > 0 {
+		timeout = time.After(config.ShipSubShutdownTimeout)
+		sugar.Infow(
+			"Monitoring events until timeout reached.",
+			"timeoutSeconds", config.ShipSubShutdownTimeout.Seconds(),
+		)
+	} else {
+		sugar.Infow("Monitoring events without timeout.")
+	}
 
 	monitorSubscriptionEvents(ship, appSubscription, timeout)
 
