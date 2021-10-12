@@ -98,14 +98,8 @@
       %relay-options
     =/  options=options:ursr  +.action.payload
     ~&  >  "got %provider-start-job request: {<options>}"
-    :: =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
-    :: =/  receive-args  [~ `receive-tid [our.bowl %ursr-provider da+now.bowl] %ursr-provider-receive-from-client !>([src.bowl])]
-    :: ~&  >  "starting receive thread {<receive-tid>}"
-    :: =/  receive-id=@ta  (scot %uv (sham eny.bowl))  :: TODO: store this?
     :_  state
-    :~  :: [%pass /from-client/[receive-id] %agent [src.bowl %ursr-client] %watch /client-to-provider/[receive-id]]
-        :: [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
-        [%give %fact ~[/urth-path] %ursr-payload !>([job-id.payload %relay-options options])]
+    :~  [%give %fact ~[/urth-path] %ursr-payload !>([job-id.payload %relay-options options])]
     ==
     ::
       %relay-reply
@@ -113,25 +107,12 @@
     :_  state
     :~  [%give %fact ~[/provider-to-client/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
     ==
-    :: ::
-    ::   %stop-threads
-    :: =/  receive-tid=@ta  +.action
-    :: ~&  >  "stopping receive thread {<receive-tid>}"
-    :: :_  state
-    :: :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-stop !>([receive-tid %.y])]
-    :: ==
     ::
       %audio-done
     ~&  >  "unexpectedly received %audio-done; ignoring"  `state
     ::
       %client-start-job
     ~&  >  "unexpectedly received %client-start-job; ignoring"  `state
-    :: ::
-    ::   %client-send-tid
-    :: ~&  >  "unexpectedly received %client-send-tid; ignoring"  `state
-    :: ::
-    ::   %client-start-threads
-    :: ~&  >  "unexpectedly received %client-start-threads; ignoring"  `state
     ::
       %relay-audio
     ~&  >  "unexpectedly received %relay-audio; ignoring"  `state

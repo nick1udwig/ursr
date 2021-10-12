@@ -82,7 +82,6 @@
       ?+  -.sign  (on-agent:def wire sign)
           %fact
         ~&  >>  "got reply cage from provider {<cage.sign>}"
-        :: =/  job-id-ta=@ta  (scot %ud i.-.+.wire)
         =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
         =/  job-id-ta=@ta  (scot %ud job-id.p)
         :_  this
@@ -108,14 +107,9 @@
       %client-start-job
     =/  client-args=args-frontend-to-client:ursr  +.action.payload
     ~&  >  "got %client-start-threads request: {<client-args>}"
-    :: =/  receive-tid   `@ta`(cat 3 'thread_' (scot %uv (sham eny.bowl)))
-    :: =/  receive-args  [~ `receive-tid [our.bowl %ursr-client da+now.bowl] %ursr-client-receive-from-provider !>([provider.client-args])]
-    :: ~&  >  "starting receive thread {<receive-tid>}"
     :_  state
     :~  [%pass /poke-wire %agent [provider.client-args %ursr-provider] %poke %ursr-payload !>([job-id.payload %relay-options options.client-args])]
         [%pass /from-provider/(scot %ud job-id.payload) %agent [provider.client-args %ursr-provider] %watch /provider-to-client/(scot %ud job-id.payload)]
-        :: [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-start !>(receive-args)]
-        :: [%give %fact ~[/frontend-path] %ursr-action !>([%client-send-tid receive-tid])]
         :: TODO: notify frontend ready to accept audio?
     ==
     ::
@@ -123,16 +117,6 @@
     :_  state
     :~  [%give %fact ~[/client-to-provider/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
     ==
-    :: ::
-    ::   %stop-threads
-    :: =/  receive-tid=@ta  +.action
-    :: ~&  >  "stopping receive thread {<receive-tid>}"
-    :: :_  state
-    :: :~  [%pass /thread/[receive-tid] %agent [our.bowl %spider] %poke %spider-stop !>([receive-tid %.y])]
-    :: ==
-    :: ::
-    ::   %client-send-tid
-    :: ~&  >>>  "unexpectedly received %client-send-tid; ignoring"  `state
     ::
       %relay-options
     ~&  >>>  "unexpectedly received %relay-options; ignoring"  `state

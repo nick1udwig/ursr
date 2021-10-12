@@ -126,6 +126,7 @@ func startNewJob(ship *urbit.Client, payload *ursr.Payload, jobIdsToJobs map[uin
 		return
 	}
 
+	// TODO: Delay starting job until audio is received to reduce risk of Engine timeout?
 	err = newJob.SendOptions(payload.Action.RelayOptions)
 	if err != nil {
 		sugar.Errorw(
@@ -219,18 +220,11 @@ func relayReplies(ship *urbit.Client, job *engine.Job, jobId uint64) (err error)
 						},
 					}
 
-					// // replyAction := &ursr.Action{RelayReply: *reply}
-					// replyAction := &struct {
-					// 	RelayReply engine.ReplyUrbitFormat `json:"relay-reply"`
-					// }{RelayReply: engine.ReplyToUrbitFormat(reply)}
-
-					// replyBytes, err := json.Marshal(replyAction)
 					replyBytes, err := json.Marshal(replyPayload)
 					if err == nil {
 						pokeResult := ship.PokeShipMark(
 							ship.Name(),
 							config.UrSrProviderAppName,
-							// "ursr-action",
 							"ursr-payload",
 							replyBytes,
 						)
@@ -243,7 +237,6 @@ func relayReplies(ship *urbit.Client, job *engine.Job, jobId uint64) (err error)
 								"ship", ship.Name(),
 								"app", config.UrSrProviderAppName,
 								"mark", "ursr-action",
-								// "replyAction", replyAction,
 								"replyPayload", replyPayload,
 								"replyBytes", replyBytes,
 							)
@@ -254,7 +247,6 @@ func relayReplies(ship *urbit.Client, job *engine.Job, jobId uint64) (err error)
 								"ship", ship.Name(),
 								"app", config.UrSrProviderAppName,
 								"mark", "ursr-action",
-								// "replyAction", replyAction,
 								"replyPayload", replyPayload,
 								"replyBytes", replyBytes,
 							)
@@ -267,7 +259,6 @@ func relayReplies(ship *urbit.Client, job *engine.Job, jobId uint64) (err error)
 							"ship", ship.Name(),
 							"app", config.UrSrProviderAppName,
 							"mark", "ursr-action",
-							// "replyAction", replyAction,
 							"replyPayload", replyPayload,
 						)
 					}
