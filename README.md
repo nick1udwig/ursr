@@ -74,6 +74,80 @@ The `Chat` MUST be hosted on your ship to work!
 
 # Provider set up
 
+It is my intention to make provider set up easier,
+but until then, here is a guide.
+
+A provider needs to set up three things:
+
+1. The UrSR Provider Gall app on the provider ship.
+1. The Mod9 ASR Engine, a TCP server that will do
+   the actual transcription.
+1. A golang "wrapper" server that communicates between
+   the UrSR Provider Gall app and the Mod9 ASR Engine.
+
+## UrSR Provider Gall app
+
+On your provider ship (recommended to be a moon!)
+install the UrSR Provider Gall app from my distribution ship
+`~dister-hosted-labweb`.
+See
+[UrSR Demo usage](#ursr-demo-notebook-usage-example)
+above for instructions on how to install.
+
+## Mod9 ASR Engine
+I recommend installing the Docker image of the Engine.
+To do so, make sure you have installed Docker and then
+run
+
+```
+docker pull mod9/asr
+```
+
+To run the Engine, use
+```
+docker run -p 9900:9900 mod9/asr engine
+```
+
+An important caveat related to the Engine:
+the Engine is not free or open source software.
+The copy pulled down from Docker, above, is a 45-day trial.
+Instructions on getting a licensed copy will appear here shortly.
+
+To run the trial Engine without CPU throttling, start it as follows:
+
+```
+docker run -p 9900:9900 mod9/asr engine --accept-license=yes
+```
+
+For more information, please consult the
+[Engine documentation](https://mod9.io/).
+
+## Golang wrapper
+The golang wrapper communicates between
+your provider ship and the Engine.
+In the future, it will be distributed as an exectuable.
+Until then, you will need to run the source.
+
+First, install golang following
+[the docs on the golang website](https://golang.org/doc/install).
+```bash
+# Pull the UrSR source code.
+git pull https://github.com/hosted-fornet/ursr.git
+
+# Navigate to the UrSR `go` directory.
+cd /path/to/ursr/go
+
+# View usage information.
+go run cmd/main.go -h
+
+# Run the golang wrapper with the proper flags for your set up
+#  (examples for a fakeship `~wes` below):
+go run -code lapwen-fadtun-lagsyl-fadpex -engine localhost:9900 -ship localhost:8080 -ttl 0
+```
+
+
+# Protocol
+
 Coming soon.
 
 
