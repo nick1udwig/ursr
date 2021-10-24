@@ -36,6 +36,7 @@
   ++  on-poke
     |=  [=mark =vase]
     ^-  (quip card _this)
+    ?>  (team:title our.bowl src.bowl)
     ?+    mark  (on-poke:def mark vase)
         %ursr-payload
       =^  cards  state
