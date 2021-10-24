@@ -315,6 +315,8 @@
 
             window.channel = Channel;
 
+            // Poor man's import done
+
 
             // messagesPerChunk is a tradeoff:
             //  too small and the poke spam slows down ship communication,
@@ -375,12 +377,6 @@
                 `)}`;
                 let i = 0;
                 let chunk = [];
-                let bytesPerChunk = [];
-                let int16sSent;
-                let bytesSent;
-                let meanBytesSent;
-                let meanKiloBytesPerChunk;
-                let t1 = performance.now();
                 audioCtx = new AudioContext({sampleRate: rate});
                 audioCtx.audioWorklet.addModule(workletProcessorDataURL)
                     .then(() => {
@@ -398,24 +394,6 @@
                             chunk = chunk.concat(e.data);
                             if (i % messagesPerChunk == 0) {
                                 if (chunk.length > 0) {
-                                    bytesPerChunk.push(chunk.length);
-                                    if (i % messagesPerChunk ** 3 == 0) {
-                                        t2 = performance.now();
-                                        if (bytesPerChunk.length > 0) {
-                                            int16sSent = bytesPerChunk.reduce((acc, x) => acc + x, 0);
-                                            bytesSent = int16sSent * 2;
-                                            meanBytesSent = bytesSent / bytesPerChunk.length;
-                                        } else {
-                                            int16sSent = chunk.length;
-                                            bytesSent = int16sSent * 2;
-                                            meanBytesSent = bytesSent;
-                                        }
-                                        meanKiloBytesPerChunk = meanBytesSent / 1000;
-                                        kiloBytesPerSecond = bytesSent / (t2 - t1);  // bytes / ms == kB / s
-                                        console.log(`audio pokes (poke ${i / messagesPerChunk}; ${int16sSent} in last ${messagesPerChunk ** 2} pokes) (avg ${meanKiloBytesPerChunk}kB; ${kiloBytesPerSecond}kB/s).`);
-                                        bytesPerChunk = [];
-                                        t1 = performance.now();
-                                    }
                                     window.urb.poke(
                                         window.ship,
                                         "ursr-client",
@@ -438,11 +416,6 @@
                         processorNode.onprocessorerror = (error) => {
                           console.log(`Processor node error: ${error}`);
                           stopRecording();
-                          // createNewMessage(
-                          //   "The microphone audio data was not in the expected [-1,+1] range as floating point. "
-                          //   + "Please refer to xkcd.com/2200",
-                          //   ["log-info", "log-info-error"]
-                          // )
                         }
                     })
                     .catch(() => console.log("Did not create AudioWorkletNode."));
