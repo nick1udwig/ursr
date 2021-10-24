@@ -336,8 +336,9 @@
                 /*
                     Create the audio processing interface. Use a Data URL to embed a small JS file containing a
                     custom AudioWorkletProcessor. The custom processor will take the user's microphone data as
-                    32-bit float PCM (gain-normalized) in [-1,+1] audio data and convert it to signed 16-bit
+                    32-bit float PCM (gain-normalized) nominally in [-1,+1] audio data and convert it to signed 16-bit
                     integer linear PCM audio data.
+                    Details about AudioBuffer can be found at https://webaudio.github.io/web-audio-api/#AudioBuffer
                 */
                 let workletProcessorDataURL = `data:application/javascript;charset=utf8,${encodeURIComponent(`
                     class AudioConvertingProcessor extends AudioWorkletProcessor {
@@ -351,8 +352,11 @@
                                 const PCM16iSamples = [];
                                 for ( let i = 0; i < inputChannel.length; i++) {
                                     let val = Math.round((2**16-1) * (1.0+inputChannel[i])/2) - 2**15;
-                                    if (val < -(2**15) || val > (2**15-1)) {
-                                        throw new Error();
+                                    if (val < -(2**15)) {
+                                        val = -(2**15);
+                                    }
+                                    if (val > (2**15 - 1)) {
+                                        val = 2**15 - 1;
                                     }
                                     PCM16iSamples.push(val);
                                 }
