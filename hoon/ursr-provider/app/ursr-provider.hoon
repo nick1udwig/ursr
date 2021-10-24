@@ -81,10 +81,11 @@
       ?+  -.sign  (on-agent:def wire sign)
           %fact
         =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
-        :_  this
         ?.  =(%audio-done -.action.p)
+          :_  this
           :~  [%give %fact ~[/urth-path] cage.sign]
           ==
+        :_  this(state [%0 (~(del in active.state) job-id.p)])
         :~  [%give %fact ~[/urth-path] cage.sign]
             [%pass /from-client/(scot %ud job-id.p) %agent [src.bowl %ursr-client] %leave ~]
         ==

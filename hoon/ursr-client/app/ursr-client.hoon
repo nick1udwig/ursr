@@ -86,10 +86,11 @@
         ~&  >>  "got reply cage from provider {<cage.sign>}"
         =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
         =/  job-id-ta=@ta  (scot %ud job-id.p)
-        :_  this
         ?.  =(%job-done -.action.p)
+          :_  this
           :~  [%give %fact ~[/frontend-path/[job-id-ta]] cage.sign]
           ==
+        :_  this(state [%0 (~(del in active.state) job-id.p)])
         :~  [%give %fact ~[/frontend-path/[job-id-ta]] cage.sign]
             [%pass /from-provider/[job-id-ta] %agent [src.bowl %ursr-provider] %leave ~]
         ==
