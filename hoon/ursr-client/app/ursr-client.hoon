@@ -62,10 +62,11 @@
       =/  job-id=@ud  (slav %ud -.+.path)
       ~&  >>  "got subscription from urth frontend {<job-id>}"
       ?:  (~(has in active.state) job-id)
-        :: TODO: kick the newcomer.
         :: TODO: warn frontend this job-id is occupied.
-        ~&  >>  "already have this job-id"
-        `this
+        ~&  >>  "already have this job-id; kicking"
+        :_  this
+        :~  [%give %kick ~ src.bowl]
+        ==
       `this(state [%0 (~(put in active.state) job-id)])
       ::
         [%client-to-provider @ ~]
