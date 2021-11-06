@@ -83,12 +83,23 @@ func monitorSubscriptionEvents(
 					payload := &ursr.Payload{}
 					err = json.Unmarshal(event.Data, payload)
 					if err != nil {
-						sugar.Errorw(
+						sugar.Warnw(
 							"Trouble reading in app subscription JSON.",
 							"subscriptionId", event.ID,
 							"err", err,
 						)
-						return
+						if e, ok := err.(*json.UnmarshalTypeError); !ok {
+							sugar.Warnw("Recovered and clipped first int16 out of bounds.")
+							clippedIndex := ursr.OffsetToIndex(event.Data, ',', int(e.Offset))
+							clippedValue := ursr.JsonValueToClippedInt16(e.Value)
+							payload.Action.RelayAudio.Audio[clippedIndex] = clippedValue
+						} else {
+							sugar.Errorw(
+								"Could not recover; bailing on this message.",
+								"eventData", event.Data,
+							)
+							continue
+						}
 					}
 					if _, ok := jobIdsToJobs[payload.JobId]; ok {
 						go relayAudio(payload, jobIdsToJobs)

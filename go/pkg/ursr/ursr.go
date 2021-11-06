@@ -1,6 +1,10 @@
 package ursr
 
 import (
+	"math"
+	"strconv"
+	"strings"
+
 	"github.com/hosted-fornet/ursr/go/pkg/engine"
 )
 
@@ -44,4 +48,35 @@ type ReplyAction struct {
 type ReplyPayload struct {
 	JobId  uint64      `json:"job-id"`
 	Action ReplyAction `json:"action"`
+}
+
+func OffsetToIndex(bytes []byte, delimiter byte, offset int) (index int) {
+	for i, c := range bytes {
+		if c == delimiter {
+			if i == offset {
+				break
+			}
+			index += 1
+		}
+	}
+	return
+}
+
+func jsonValueToInt64(jsonValue string) (jsonInt64 int64) {
+	jsonValues := strings.Split(jsonValue, " ")
+	jsonInt64, _ = strconv.ParseInt(jsonValues[1], 10, 64)
+	return
+}
+
+func JsonValueToClippedInt16(jsonValue string) (clippedInt16 int16) {
+	jsonInt64 := jsonValueToInt64(jsonValue)
+	switch {
+	case jsonInt64 < math.MinInt16:
+		clippedInt16 = math.MinInt16
+	case jsonInt64 > math.MaxInt16:
+		clippedInt16 = math.MaxInt16
+	default:
+		clippedInt16 = int16(jsonInt64)
+	}
+	return
 }
