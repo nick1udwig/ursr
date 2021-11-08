@@ -1,12 +1,17 @@
-/-  ursr
-/+  default-agent, ursr-lib=ursr
+/-  ursr, wl=whitelist
+/+  default-agent, ursr-lib=ursr, wl-lib=whitelist
 |%
 +$  versioned-state
     $%  state-zero
+        state-one
     ==
 ::
 +$  state-zero
     $:  [%0 active=(set @ud)]
+    ==
+::
++$  state-one
+    $:  [%1 active=(set @ud) =whitelist.wl]
     ==
 ::
 +$  card  card:agent:gall
@@ -23,7 +28,7 @@
   ++  on-init
     ^-  (quip card _this)
     ~&  >  '%ursr-provider initialized successfully'
-    =.  state  [%0 ~]
+    =.  state  [%1 ~ *whitelist.wl(public %.n, kids %.n)]
     `this
   ++  on-save
     ^-  vase
@@ -31,8 +36,20 @@
   ++  on-load
     |=  old-state=vase
     ^-  (quip card _this)
-    ~&  >  '%ursr-provider recompiled successfully'
-    `this(state !<(versioned-state old-state))
+    =/  old  !<(versioned-state old-state)
+    |-
+    ?-    -.old
+        %1
+      ~&  >  '%ursr-provider recompiled successfully'
+      `this(state !<(versioned-state old-state))
+      ::
+        %0
+      %_  $
+        -.old          %1
+        active.old     active
+        whitelist.old  *whitelist.wl(public %.n, kids %.n)
+      ==
+    ==
   ++  on-poke
     |=  [=mark =vase]
     ^-  (quip card _this)
@@ -42,7 +59,13 @@
       =^  cards  state
       (handle-payload:hc !<(payload:ursr vase))
       [cards this]
-    ::
+      ::
+        %whitelist-command
+      ?>  (team:title our.bowl src.bowl)
+      =^  cards  whitelist.state
+      (handle-command !<(whitelist-command:wl vase) whitelist.state `%provider-to-client bowl)
+      [cards this]
+      ::
         %noun
       ?+    q.vase  (on-poke:def mark vase)
           %print-state
@@ -59,10 +82,13 @@
     ^-  (quip card _this)
     ?+     path  (on-watch:def path)
         [%provider-to-client @ ~]
+      ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
+        ~&  >  "blocked subscription from {<src.bowl>}: not on whitelist"
+        [~[[%give %kick ~ ~]] this]
       =/  job-id-ta=@ta  -.+.path
       =/  job-id=@ud  (slav %ud job-id-ta)
-      ~&  >  "got subscription from client; subscribing back {<job-id-ta>}"
-      :_  this(state [%0 (~(put in active.state) job-id)])
+      ~&  >  "got subscription from client {<src.bowl>}; subscribing back {<job-id-ta>}"
+      :_  this(state state(active (~(put in active.state) job-id)))
       :~  [%pass /from-client/[job-id-ta] %agent [src.bowl %ursr-client] %watch /client-to-provider/[job-id-ta]]
       ==
       ::
@@ -85,7 +111,7 @@
           :_  this
           :~  [%give %fact ~[/urth-path] cage.sign]
           ==
-        :_  this(state [%0 (~(del in active.state) job-id.p)])
+        :_  this(state state(active (~(del in active.state) job-id.p)))
         :~  [%give %fact ~[/urth-path] cage.sign]
             [%pass /from-client/(scot %ud job-id.p) %agent [src.bowl %ursr-client] %leave ~]
         ==

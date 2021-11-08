@@ -1,10 +1,10 @@
 #!/bin/bash
 
 app_name="ursr-app-name"
-usage_string="Usage: ./make-${app_name}.sh $app_name /path/to/pier /path/to/${app_name}"
+usage_string="Usage: ./make-${app_name}.sh $app_name /path/to/pier /path/to/${app_name} /path/to/whitelist"
 
 # Parse args.
-if [ $# -ne 3 ]; then
+if [ $# -ne 4 ]; then
     echo "$usage_string"
     echo ""
     echo "Set up ${app_name}."
@@ -32,6 +32,7 @@ fi
 app_name=$1
 path_to_pier=$2
 path_to_app_code=$3
+path_to_whitelist=$4
 
 if [ "$app_name" != "ursr-client" ] \
 && [ "$app_name" != "ursr-demo" ]   \
@@ -62,12 +63,18 @@ if [ -f "${app_name}-tmp" ]; then
 fi
 cp -r $path_to_app_code "./${app_name}-tmp"
 
+if [ -f "$(dirname $path_to_whitelist)" ]; then
+    rm -r "./$(dirname path_to_whitelist)"
+fi
+cp -r $path_to_whitelist "./$(dirname $path_to_whitelist)"
+
 # Build the desk.
 if [ "$app_name" == "ursr-demo" ]; then
     ./symbolic-merge.sh landscape $app_name
 fi
 ./symbolic-merge.sh base-dev $app_name
 ./symbolic-merge.sh garden-dev $app_name
+./symbolic-merge.sh $(dirname $path_to_whitelist) $app_name
 ./symbolic-merge.sh ursr-dev-tmp $app_name
 if [ "$path_to_app_code" != "" ]; then
     ./symbolic-merge.sh "./${app_name}-tmp" $app_name
@@ -86,5 +93,6 @@ cp -Lr $app_name $path_to_pier
 rm -r $app_name
 rm -r "./ursr-dev-tmp"
 rm -r "./${app_name}-tmp"
+rm -r $(dirname $path_to_whitelist)
 
 echo "Done."
