@@ -17,7 +17,8 @@
 +$  card  card:agent:gall
 ::
 --
-=|  state=versioned-state
+=|  state-one
+=*  state  -
 ^-  agent:gall
 =<
   |_  =bowl:gall
@@ -28,8 +29,7 @@
   ++  on-init
     ^-  (quip card _this)
     ~&  >  '%ursr-provider initialized successfully'
-    =.  state  [%1 ~ *whitelist.wl(public %.n, kids %.n)]
-    `this
+    `this(public.whitelist.state %.n, kids.whitelist.state %.n)
   ++  on-save
     ^-  vase
     !>(state)
@@ -41,20 +41,20 @@
     ?-    -.old
         %1
       ~&  >  '%ursr-provider recompiled successfully'
-      `this(state !<(versioned-state old-state))
+      `this(state old)
       ::
         %0
-      %_  $
-        -.old          %1
-        active.old     active
-        whitelist.old  *whitelist.wl(public %.n, kids %.n)
-      ==
+      =|  =whitelist.wl
+      $(old [%1 active.old whitelist(public %.n, kids %.n)])
     ==
   ++  on-poke
     |=  [=mark =vase]
     ^-  (quip card _this)
     ?+    mark  (on-poke:def mark vase)
         %ursr-payload
+      ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
+        ~&  >  "got poke from {<src.bowl>}: not on whitelist"
+        `this
       ~&  >>>  !<(payload:ursr vase)
       =^  cards  state
       (handle-payload:hc !<(payload:ursr vase))
@@ -63,10 +63,16 @@
         %whitelist-command
       ?>  (team:title our.bowl src.bowl)
       =^  cards  whitelist.state
-      (handle-command !<(whitelist-command:wl vase) whitelist.state `%provider-to-client bowl)
+      %:  handle-command:wl-lib
+          !<(whitelist-command:wl vase)
+          whitelist.state
+          [~ /provider-to-client]
+          bowl
+      ==
       [cards this]
       ::
         %noun
+      ?>  (team:title our.bowl src.bowl)
       ?+    q.vase  (on-poke:def mark vase)
           %print-state
         ~&  >  state
@@ -82,13 +88,16 @@
     ^-  (quip card _this)
     ?+     path  (on-watch:def path)
         [%provider-to-client @ ~]
-      ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
-        ~&  >  "blocked subscription from {<src.bowl>}: not on whitelist"
-        [~[[%give %kick ~ ~]] this]
       =/  job-id-ta=@ta  -.+.path
       =/  job-id=@ud  (slav %ud job-id-ta)
+      ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
+        ~&  >  "blocked subscription from {<src.bowl>}: not on whitelist"
+        :_  this
+        :~  [%give %fact ~[/provider-to-client/[job-id-ta]] %ursr-payload !>([job-id %job-done %.n])]
+            [%give %kick ~ ~]
+        ==
       ~&  >  "got subscription from client {<src.bowl>}; subscribing back {<job-id-ta>}"
-      :_  this(state state(active (~(put in active.state) job-id)))
+      :_  this(active.state (~(put in active.state) job-id))
       :~  [%pass /from-client/[job-id-ta] %agent [src.bowl %ursr-client] %watch /client-to-provider/[job-id-ta]]
       ==
       ::
@@ -111,7 +120,7 @@
           :_  this
           :~  [%give %fact ~[/urth-path] cage.sign]
           ==
-        :_  this(state state(active (~(del in active.state) job-id.p)))
+        :_  this(active.state (~(del in active.state) job-id.p))
         :~  [%give %fact ~[/urth-path] cage.sign]
             [%pass /from-client/(scot %ud job-id.p) %agent [src.bowl %ursr-client] %leave ~]
         ==

@@ -50,31 +50,36 @@ fi
 
 # Clean and prepare workspace in `pkg`.
 if [ -f "$app_name" ]; then
-    rm -r $app_name
+    rm -rf $app_name
 fi
 
 if [ -f "ursr-dev-tmp" ]; then
-    rm -r "./ursr-dev-tmp"
+    rm -rf "./ursr-dev-tmp"
 fi
 cp -r "$(dirname $path_to_app_code)/ursr-dev" "./ursr-dev-tmp"
 
 if [ -f "${app_name}-tmp" ]; then
-    rm -r "./${app_name}-tmp"
+    rm -rf "./${app_name}-tmp"
 fi
 cp -r $path_to_app_code "./${app_name}-tmp"
 
-if [ -f "$(dirname $path_to_whitelist)" ]; then
-    rm -r "./$(dirname path_to_whitelist)"
+if [ "$app_name" == "ursr-provider" ]; then
+    if [ -f "$(basename $path_to_whitelist)" ]; then
+        rm -rf "./$(basename $path_to_whitelist)"
+    fi
+    cp -r $path_to_whitelist "./$(basename $path_to_whitelist)"
 fi
-cp -r $path_to_whitelist "./$(dirname $path_to_whitelist)"
 
 # Build the desk.
-if [ "$app_name" == "ursr-demo" ]; then
+if [ "$app_name" == "ursr-demo" ] \
+|| [ "$app_name" == "ursr-provider" ]; then
     ./symbolic-merge.sh landscape $app_name
 fi
 ./symbolic-merge.sh base-dev $app_name
 ./symbolic-merge.sh garden-dev $app_name
-./symbolic-merge.sh $(dirname $path_to_whitelist) $app_name
+if [ "$app_name" == "ursr-provider" ]; then
+    ./symbolic-merge.sh $(basename $path_to_whitelist) $app_name
+fi
 ./symbolic-merge.sh ursr-dev-tmp $app_name
 if [ "$path_to_app_code" != "" ]; then
     ./symbolic-merge.sh "./${app_name}-tmp" $app_name
@@ -86,13 +91,15 @@ fi
 echo "[%zuse 420]" > ${app_name}/sys.kelvin
 
 # Place the desk in given pier.
-rm -r "${path_to_pier}/${app_name}"
+rm -rf "${path_to_pier}/${app_name}"
 cp -Lr $app_name $path_to_pier
 
 # Clean up.
-rm -r $app_name
-rm -r "./ursr-dev-tmp"
-rm -r "./${app_name}-tmp"
-rm -r $(dirname $path_to_whitelist)
+rm -rf $app_name
+rm -rf "./ursr-dev-tmp"
+rm -rf "./${app_name}-tmp"
+if [ "$app_name" == "ursr-provider" ]; then
+    rm -rf "./$(basename $path_to_whitelist)"
+fi
 
 echo "Done."
