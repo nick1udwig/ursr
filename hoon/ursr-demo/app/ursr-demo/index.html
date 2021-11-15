@@ -521,6 +521,7 @@
                         console.log("Unexpected relay-reply from app.");
                     }
                 } else if (fact["action"].hasOwnProperty("job-done")) {
+                    console.log(`Got job done. Success?: ${fact["action"]["job-done"]}.`);
                     await unsubscribeFromApp(appSubscription);
                 } else {
                     console.log("Unexpected fact type from app.");
