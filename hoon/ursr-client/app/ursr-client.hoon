@@ -65,9 +65,9 @@
         :: TODO: warn frontend this job-id is occupied.
         ~&  >>  "already have this job-id; kicking"
         :_  this
-        :~  [%give %kick ~ src.bowl]
+        :~  [%give %kick ~ `src.bowl]
         ==
-      `this(state [%0 (~(put in active.state) job-id)])
+      `this(active.state (~(put in active.state) job-id))
       ::
         [%client-to-provider @ ~]
       ~&  >>  "got subscription from provider {<-.+.path>}"  `this
@@ -90,7 +90,7 @@
           :_  this
           :~  [%give %fact ~[/frontend-path/[job-id-ta]] cage.sign]
           ==
-        :_  this(state [%0 (~(del in active.state) job-id.p)])
+        :_  this(active.state (~(del in active.state) job-id.p))
         :~  [%give %fact ~[/frontend-path/[job-id-ta]] cage.sign]
             [%pass /from-provider/[job-id-ta] %agent [src.bowl %ursr-provider] %leave ~]
         ==
