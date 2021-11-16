@@ -22,7 +22,7 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    ~&  >  '%ursr-client initialized successfully'
+    ~&  >  'ursr-client: initialized successfully'
     =.  state  [%0 ~]
     `this
   ++  on-save
@@ -31,7 +31,7 @@
   ++  on-load
     |=  old-state=vase
     ^-  (quip card _this)
-    ~&  >  '%ursr-client recompiled successfully'
+    ~&  >  'ursr-client: recompiled successfully'
     `this(state !<(versioned-state old-state))
   ++  on-poke
     |=  [=mark =vase]
@@ -60,21 +60,21 @@
     ?+     path  (on-watch:def path)
         [%frontend-path @ ~]
       =/  job-id=@ud  (slav %ud -.+.path)
-      ~&  >>  "got subscription from urth frontend {<job-id>}"
+      ~&  >  "ursr-client: got subscription from urth frontend {<job-id>}"
       ?:  (~(has in active.state) job-id)
         :: TODO: warn frontend this job-id is occupied.
-        ~&  >>  "already have this job-id; kicking"
+        ~&  >>  "ursr-client: already have this job-id; kicking"
         :_  this
         :~  [%give %kick ~ `src.bowl]
         ==
       `this(active.state (~(put in active.state) job-id))
       ::
         [%client-to-provider @ ~]
-      ~&  >>  "got subscription from provider {<-.+.path>}"  `this
+      ~&  >>  "ursr-client: got subscription from provider {<-.+.path>}"  `this
     ==
   ++  on-leave
     |=  =path
-    ~&  "got subscription leave request on path {<path>}"  `this
+    ~&  "ursr-client: got subscription leave request on path {<path>}"  `this
   ++  on-peek   on-peek:def
   ++  on-agent
     |=  [=wire =sign:agent:gall]
@@ -83,7 +83,7 @@
         [%from-provider @ ~]
       ?+  -.sign  (on-agent:def wire sign)
           %fact
-        ~&  >>  "got reply cage from provider {<cage.sign>}"
+        ~&  >>  "ursr-client: got reply cage from provider {<cage.sign>}"
         =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
         =/  job-id-ta=@ta  (scot %ud job-id.p)
         ?.  =(%job-done -.action.p)
@@ -106,14 +106,14 @@
   ^-  (quip card _state)
   ?-    -.action.payload
       %audio-done
-    ~&  >  "got %audio-done"
+    ~&  >  "ursr-client: got %audio-done"
     :_  state
     :~  [%give %fact ~[/client-to-provider/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
     ==
     ::
       %client-start-job
     =/  client-args=args-frontend-to-client:ursr  +.action.payload
-    ~&  >  "got %client-start-threads request: {<client-args>}"
+    ~&  >  "ursr-client: got %client-start-threads request: {<client-args>}"
     :_  state
     :~  [%pass /poke-wire %agent [provider.client-args %ursr-provider] %poke %ursr-payload !>([job-id.payload %relay-options options.client-args])]
         [%pass /from-provider/(scot %ud job-id.payload) %agent [provider.client-args %ursr-provider] %watch /provider-to-client/(scot %ud job-id.payload)]
@@ -126,12 +126,12 @@
     ==
     ::
       %job-done
-    ~&  >  "unexpectedly received %job-done; ignoring"  `state
+    ~&  >  "ursr-client: unexpectedly received %job-done; ignoring"  `state
     ::
       %relay-options
-    ~&  >>>  "unexpectedly received %relay-options; ignoring"  `state
+    ~&  >>>  "ursr-client: unexpectedly received %relay-options; ignoring"  `state
     ::
       %relay-reply
-    ~&  >>>  "unexpectedly received %relay-reply; ignoring"  `state
+    ~&  >>>  "ursr-client: unexpectedly received %relay-reply; ignoring"  `state
   ==
 --
