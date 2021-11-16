@@ -22,7 +22,7 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    ~&  >  'ursr-client: initialized successfully'
+    ~&  >  "ursr-client: initialized successfully"
     =.  state  [%0 ~]
     `this
   ++  on-save
@@ -31,7 +31,7 @@
   ++  on-load
     |=  old-state=vase
     ^-  (quip card _this)
-    ~&  >  'ursr-client: recompiled successfully'
+    ~&  >  "ursr-client: recompiled successfully"
     `this(state !<(versioned-state old-state))
   ++  on-poke
     |=  [=mark =vase]
@@ -46,11 +46,11 @@
         %noun
       ?+    q.vase  (on-poke:def mark vase)
           %print-state
-        ~&  >>  state
-        ~&  >>>  bowl  `this
+        ~&  >  state
+        ~&  >  bowl  `this
       ::
           %print-subs
-        ~&  >>  &2.bowl  `this
+        ~&  >  &2.bowl  `this
       ==
     ==
   ::
@@ -70,11 +70,11 @@
       `this(active.state (~(put in active.state) job-id))
       ::
         [%client-to-provider @ ~]
-      ~&  >>  "ursr-client: got subscription from provider {<-.+.path>}"  `this
+      ~&  >  "ursr-client: got subscription from provider {<-.+.path>}"  `this
     ==
   ++  on-leave
     |=  =path
-    ~&  "ursr-client: got subscription leave request on path {<path>}"  `this
+    ~&  >  "ursr-client: got subscription leave request on path {<path>}"  `this
   ++  on-peek   on-peek:def
   ++  on-agent
     |=  [=wire =sign:agent:gall]
@@ -126,7 +126,7 @@
     ==
     ::
       %job-done
-    ~&  >  "ursr-client: unexpectedly received %job-done; ignoring"  `state
+    ~&  >>>  "ursr-client: unexpectedly received %job-done; ignoring"  `state
     ::
       %relay-options
     ~&  >>>  "ursr-client: unexpectedly received %relay-options; ignoring"  `state

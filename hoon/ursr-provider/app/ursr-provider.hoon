@@ -28,7 +28,7 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    ~&  >  'ursr-provider: initialized successfully'
+    ~&  >  "ursr-provider: initialized successfully"
     `this(public.whitelist.state %.n, kids.whitelist.state %.n)
   ++  on-save
     ^-  vase
@@ -40,7 +40,7 @@
     |-
     ?-    -.old
         %1
-      ~&  >  'ursr-provider: recompiled successfully'
+      ~&  >  "ursr-provider: recompiled successfully"
       `this(state old)
       ::
         %0
@@ -76,7 +76,7 @@
       ?+    q.vase  (on-poke:def mark vase)
           %print-state
         ~&  >  state
-        ~&  >>  bowl  `this
+        ~&  >  bowl  `this
         ::
           %print-subs
         ~&  >  &2.bowl  `this
