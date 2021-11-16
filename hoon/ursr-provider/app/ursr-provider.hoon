@@ -28,7 +28,7 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    ~&  >  '%ursr-provider initialized successfully'
+    ~&  >  'ursr-provider: initialized successfully'
     `this(public.whitelist.state %.n, kids.whitelist.state %.n)
   ++  on-save
     ^-  vase
@@ -40,7 +40,7 @@
     |-
     ?-    -.old
         %1
-      ~&  >  '%ursr-provider recompiled successfully'
+      ~&  >  'ursr-provider: recompiled successfully'
       `this(state old)
       ::
         %0
@@ -53,7 +53,7 @@
     ?+    mark  (on-poke:def mark vase)
         %ursr-payload
       ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
-        ~&  >  "got poke from {<src.bowl>}: not on whitelist"
+        ~&  >  "ursr-provider: got poke from {<src.bowl>}: not on whitelist"
         `this
       ~&  >>>  !<(payload:ursr vase)
       =^  cards  state
@@ -91,22 +91,22 @@
       =/  job-id-ta=@ta  -.+.path
       =/  job-id=@ud  (slav %ud job-id-ta)
       ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
-        ~&  >  "blocked subscription from {<src.bowl>}: not on whitelist"
+        ~&  >  "ursr-provider: blocked subscription from {<src.bowl>}: not on whitelist"
         :_  this
         :~  [%give %fact ~[/provider-to-client/[job-id-ta]] %ursr-payload !>([job-id %job-done %.n])]
             [%give %kick ~ ~]
         ==
-      ~&  >  "got subscription from client {<src.bowl>}; subscribing back {<job-id-ta>}"
+      ~&  >  "ursr-provider: got subscription from client {<src.bowl>}; subscribing back {<job-id-ta>}"
       :_  this(active.state (~(put in active.state) job-id))
       :~  [%pass /from-client/[job-id-ta] %agent [src.bowl %ursr-client] %watch /client-to-provider/[job-id-ta]]
       ==
       ::
         [%urth-path ~]
-      ~&  >  "got subscription from urth backend"  `this
+      ~&  >  "ursr-provider: got subscription from urth backend"  `this
     ==
   ++  on-leave
     |=  =path
-    ~&  >  "got subscription leave request on path {<path>}"  `this
+    ~&  >  "ursr-provider: got subscription leave request on path {<path>}"  `this
   ++  on-peek   on-peek:def
   ++  on-agent
     |=  [=wire =sign:agent:gall]
@@ -142,24 +142,24 @@
     ::
       %relay-options
     =/  options=options:ursr  +.action.payload
-    ~&  >  "got %provider-start-job request: {<options>}"
+    ~&  >  "ursr-provider: got %provider-start-job request: {<options>}"
     :_  state
     :~  [%give %fact ~[/urth-path] %ursr-payload !>([job-id.payload %relay-options options])]
     ==
     ::
       %relay-reply
-    ~&  >  "got %relay-reply request: {<+.action.payload>}"
+    ~&  >  "ursr-provider: got %relay-reply request: {<+.action.payload>}"
     :_  state
     :~  [%give %fact ~[/provider-to-client/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
     ==
     ::
       %audio-done
-    ~&  >  "unexpectedly received %audio-done; ignoring"  `state
+    ~&  >>>  "ursr-provider: unexpectedly received %audio-done; ignoring"  `state
     ::
       %client-start-job
-    ~&  >  "unexpectedly received %client-start-job; ignoring"  `state
+    ~&  >>>  "ursr-provider: unexpectedly received %client-start-job; ignoring"  `state
     ::
       %relay-audio
-    ~&  >  "unexpectedly received %relay-audio; ignoring"  `state
+    ~&  >>>  "ursr-provider: unexpectedly received %relay-audio; ignoring"  `state
   ==
 --
