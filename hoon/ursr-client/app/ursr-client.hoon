@@ -62,7 +62,6 @@
       =/  job-id=@ud  (slav %ud -.+.path)
       ~&  >  "ursr-client: got subscription from urth frontend {<job-id>}"
       ?:  (~(has in active.state) job-id)
-        :: TODO: warn frontend this job-id is occupied.
         ~&  >>  "ursr-client: already have this job-id; kicking"
         :_  this
         :~  [%give %kick ~ `src.bowl]
@@ -83,7 +82,7 @@
         [%from-provider @ ~]
       ?+  -.sign  (on-agent:def wire sign)
           %fact
-        ~&  >>  "ursr-client: got reply cage from provider {<cage.sign>}"
+        ~&  >  "ursr-client: got reply cage from provider {<cage.sign>}"
         =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
         =/  job-id-ta=@ta  (scot %ud job-id.p)
         ?.  =(%job-done -.action.p)
@@ -117,7 +116,6 @@
     :_  state
     :~  [%pass /poke-wire %agent [provider.client-args %ursr-provider] %poke %ursr-payload !>([job-id.payload %relay-options options.client-args])]
         [%pass /from-provider/(scot %ud job-id.payload) %agent [provider.client-args %ursr-provider] %watch /provider-to-client/(scot %ud job-id.payload)]
-        :: TODO: notify frontend ready to accept audio?
     ==
     ::
       %relay-audio

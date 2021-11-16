@@ -53,9 +53,9 @@
     ?+    mark  (on-poke:def mark vase)
         %ursr-payload
       ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
-        ~&  >  "ursr-provider: got poke from {<src.bowl>}: not on whitelist"
+        ~&  >  "ursr-provider: denied unwhitelisted poke from {<src.bowl>}"
         `this
-      ~&  >>>  !<(payload:ursr vase)
+      ~&  >  !<(payload:ursr vase)
       =^  cards  state
       (handle-payload:hc !<(payload:ursr vase))
       [cards this]
@@ -91,7 +91,7 @@
       =/  job-id-ta=@ta  -.+.path
       =/  job-id=@ud  (slav %ud job-id-ta)
       ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
-        ~&  >  "ursr-provider: blocked subscription from {<src.bowl>}: not on whitelist"
+        ~&  >  "ursr-provider: denied unwhitelisted subscription from {<src.bowl>}"
         :_  this
         :~  [%give %fact ~[/provider-to-client/[job-id-ta]] %ursr-payload !>([job-id %job-done %.n])]
             [%give %kick ~ ~]
