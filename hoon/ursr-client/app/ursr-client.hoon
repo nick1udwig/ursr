@@ -3,16 +3,22 @@
 |%
 +$  versioned-state
     $%  state-zero
+        state-one
     ==
 ::
 +$  state-zero
     $:  [%0 active=(set @ud)]
     ==
 ::
++$  state-one
+    $:  [%1 active=(set @ud) verbose=?]
+    ==
+::
 +$  card  card:agent:gall
 ::
 --
-=|  state=versioned-state
+=|  state-one
+=*  state  -
 ^-  agent:gall
 =<
   |_  =bowl:gall
@@ -22,8 +28,8 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    ~&  >  "ursr-client: initialized successfully"
-    =.  state  [%0 ~]
+    ~&  >>  "ursr-client: initialized successfully"
+    =.  state  [%1 ~ %.n]
     `this
   ++  on-save
     ^-  vase
@@ -31,8 +37,16 @@
   ++  on-load
     |=  old-state=vase
     ^-  (quip card _this)
-    ~&  >  "ursr-client: recompiled successfully"
-    `this(state !<(versioned-state old-state))
+    =/  old  !<(versioned-state old-state)
+    |-
+    ?-    -.old
+        %1
+      ~&  >>  "ursr-client: recompiled successfully"
+      `this(state old)
+      ::
+        %0
+      $(old [%1 active.old %.n])
+    ==
   ++  on-poke
     |=  [=mark =vase]
     ^-  (quip card _this)
@@ -45,6 +59,11 @@
     ::
         %noun
       ?+    q.vase  (on-poke:def mark vase)
+          [%set-verbose ?]
+        =/  new-verbose=?  +.q.vase
+        ~&  >>  "ursr-client: %set-verbose to {<new-verbose>}"
+        `this(verbose.state new-verbose)
+        ::
           %print-state
         ~&  >  state
         ~&  >  bowl  `this
@@ -60,20 +79,31 @@
     ?+     path  (on-watch:def path)
         [%frontend-path @ ~]
       =/  job-id=@ud  (slav %ud -.+.path)
-      ~&  >  "ursr-client: got subscription from urth frontend {<job-id>}"
       ?:  (~(has in active.state) job-id)
-        ~&  >>  "ursr-client: already have this job-id; kicking"
+        ~&  >>  "ursr-client: got duplicate subscription with job-id {<job-id>}; kicking"
         :_  this
         :~  [%give %kick ~ `src.bowl]
         ==
       `this(active.state (~(put in active.state) job-id))
       ::
         [%client-to-provider @ ~]
-      ~&  >  "ursr-client: got subscription from provider {<-.+.path>}"  `this
+      =^  cards  state
+        %:  return-and-maybe-log
+            verbose.state
+            "ursr-client: got subscription from provider {<-.+.path>}"
+            `state
+        ==
+      [cards this]
     ==
   ++  on-leave
     |=  =path
-    ~&  >  "ursr-client: got subscription leave request on path {<path>}"  `this
+    =^  cards  state
+      %:  return-and-maybe-log
+          verbose.state
+          "ursr-client: got subscription leave request on path {<path>}"
+          `state
+      ==
+    [cards this]
   ++  on-peek   on-peek:def
   ++  on-agent
     |=  [=wire =sign:agent:gall]
@@ -82,7 +112,6 @@
         [%from-provider @ ~]
       ?+  -.sign  (on-agent:def wire sign)
           %fact
-        ~&  >  "ursr-client: got reply cage from provider {<cage.sign>}"
         =/  p=payload:ursr  !<(payload:ursr q.cage.sign)
         =/  job-id-ta=@ta  (scot %ud job-id.p)
         ?.  =(%job-done -.action.p)
@@ -105,17 +134,25 @@
   ^-  (quip card _state)
   ?-    -.action.payload
       %audio-done
-    ~&  >  "ursr-client: got %audio-done"
-    :_  state
-    :~  [%give %fact ~[/client-to-provider/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
+    %:  return-and-maybe-log
+        verbose.state
+        "ursr-client: got %audio-done"
+        :_  state
+        :~  [%give %fact ~[/client-to-provider/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
+        ==
     ==
     ::
       %client-start-job
     =/  client-args=args-frontend-to-client:ursr  +.action.payload
-    ~&  >  "ursr-client: got %client-start-threads request: {<client-args>}"
-    :_  state
-    :~  [%pass /poke-wire %agent [provider.client-args %ursr-provider] %poke %ursr-payload !>([job-id.payload %relay-options options.client-args])]
-        [%pass /from-provider/(scot %ud job-id.payload) %agent [provider.client-args %ursr-provider] %watch /provider-to-client/(scot %ud job-id.payload)]
+
+
+    %:  return-and-maybe-log
+        verbose.state
+        "ursr-client: got %client-start-threads request: {<client-args>}"
+        :_  state
+        :~  [%pass /poke-wire %agent [provider.client-args %ursr-provider] %poke %ursr-payload !>([job-id.payload %relay-options options.client-args])]
+            [%pass /from-provider/(scot %ud job-id.payload) %agent [provider.client-args %ursr-provider] %watch /provider-to-client/(scot %ud job-id.payload)]
+        ==
     ==
     ::
       %relay-audio
@@ -132,4 +169,10 @@
       %relay-reply
     ~&  >>>  "ursr-client: unexpectedly received %relay-reply; ignoring"  `state
   ==
+::
+++  return-and-maybe-log
+  |=  [verbose=? maybe-log=tape return-val=(quip card _state)]
+  ^-  _return-val
+  ?.  verbose  return-val
+  ~&  >  maybe-log  return-val
 --
