@@ -28,7 +28,7 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    ~&  >  "ursr-provider: initialized successfully"
+    ~&  >>  "ursr-provider: initialized successfully"
     `this(verbose %.n, public.whitelist.state %.n, kids.whitelist.state %.n)
   ++  on-save
     ^-  vase
@@ -40,7 +40,7 @@
     |-
     ?-    -.old
         %1
-      ~&  >  "ursr-provider: recompiled successfully"
+      ~&  >>  "ursr-provider: recompiled successfully"
       `this(state old)
       ::
         %0
@@ -60,7 +60,6 @@
               `state
           ==
         [cards this]
-      ~&  >  !<(payload:ursr vase)
       =^  cards  state
       (handle-payload:hc !<(payload:ursr vase))
       [cards this]
@@ -81,7 +80,7 @@
       ?+    q.vase  (on-poke:def mark vase)
           [%set-verbose ?]
         =/  new-verbose=?  +.q.vase
-        ~&  >  "ursr-provider: %set-verbose to {<new-verbose>}"
+        ~&  >>  "ursr-provider: %set-verbose to {<new-verbose>}"
         `this(verbose.state new-verbose)
         ::
           %print-state
