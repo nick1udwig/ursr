@@ -11,7 +11,7 @@
     ==
 ::
 +$  state-one
-    $:  [%1 active=(set @ud) =whitelist.wl]
+    $:  [%1 active=(set @ud) verbose=? =whitelist.wl]
     ==
 ::
 +$  card  card:agent:gall
@@ -29,7 +29,7 @@
   ++  on-init
     ^-  (quip card _this)
     ~&  >  "ursr-provider: initialized successfully"
-    `this(public.whitelist.state %.n, kids.whitelist.state %.n)
+    `this(verbose %.n, public.whitelist.state %.n, kids.whitelist.state %.n)
   ++  on-save
     ^-  vase
     !>(state)
@@ -45,7 +45,7 @@
       ::
         %0
       =|  =whitelist.wl
-      $(old [%1 active.old whitelist(public %.n, kids %.n)])
+      $(old [%1 active.old %.n whitelist(public %.n, kids %.n)])
     ==
   ++  on-poke
     |=  [=mark =vase]
@@ -53,8 +53,13 @@
     ?+    mark  (on-poke:def mark vase)
         %ursr-payload
       ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
-        ~&  >  "ursr-provider: denied unwhitelisted poke from {<src.bowl>}"
-        `this
+        =^  cards  state
+          %:  return-and-maybe-log
+              verbose.state
+              "ursr-provider: denied unwhitelisted poke from {<src.bowl>}"
+              `state
+          ==
+        [cards this]
       ~&  >  !<(payload:ursr vase)
       =^  cards  state
       (handle-payload:hc !<(payload:ursr vase))
@@ -74,6 +79,11 @@
         %noun
       ?>  (team:title our.bowl src.bowl)
       ?+    q.vase  (on-poke:def mark vase)
+          [%set-verbose ?]
+        =/  new-verbose=?  +.q.vase
+        ~&  >  "ursr-provider: %set-verbose to {<new-verbose>}"
+        `this(verbose.state new-verbose)
+        ::
           %print-state
         ~&  >  state
         ~&  >  bowl  `this
@@ -91,22 +101,44 @@
       =/  job-id-ta=@ta  -.+.path
       =/  job-id=@ud  (slav %ud job-id-ta)
       ?.  (is-whitelisted:wl-lib src.bowl whitelist.state bowl)
-        ~&  >  "ursr-provider: denied unwhitelisted subscription from {<src.bowl>}"
-        :_  this
-        :~  [%give %fact ~[/provider-to-client/[job-id-ta]] %ursr-payload !>([job-id %job-done %.n])]
-            [%give %kick ~ ~]
+        =^  cards  state
+          %:  return-and-maybe-log
+              verbose.state
+              "ursr-provider: denied unwhitelisted subscription from {<src.bowl>}"
+              :_  state
+              :~  [%give %fact ~[/provider-to-client/[job-id-ta]] %ursr-payload !>([job-id %job-done %.n])]
+                  [%give %kick ~ ~]
+              ==
+          ==
+        [cards this]
+      =^  cards  state
+        %:  return-and-maybe-log
+            verbose.state
+            "ursr-provider: got subscription from client {<src.bowl>}; subscribing back {<job-id-ta>}"
+            :_  state(active (~(put in active.state) job-id))
+            :~  [%pass /from-client/[job-id-ta] %agent [src.bowl %ursr-client] %watch /client-to-provider/[job-id-ta]]
+            ==
         ==
-      ~&  >  "ursr-provider: got subscription from client {<src.bowl>}; subscribing back {<job-id-ta>}"
-      :_  this(active.state (~(put in active.state) job-id))
-      :~  [%pass /from-client/[job-id-ta] %agent [src.bowl %ursr-client] %watch /client-to-provider/[job-id-ta]]
-      ==
+      [cards this]
       ::
         [%urth-path ~]
-      ~&  >  "ursr-provider: got subscription from urth backend"  `this
+      =^  cards  state
+        %:  return-and-maybe-log
+            verbose.state
+            "ursr-provider: got subscription from urth backend"
+            `state
+        ==
+      [cards this]
     ==
   ++  on-leave
     |=  =path
-    ~&  >  "ursr-provider: got subscription leave request on path {<path>}"  `this
+    =^  cards  state
+      %:  return-and-maybe-log
+          verbose.state
+          "ursr-provider: got subscription leave request on path {<path>}"
+          `state
+      ==
+    [cards this]
   ++  on-peek   on-peek:def
   ++  on-agent
     |=  [=wire =sign:agent:gall]
@@ -130,7 +162,7 @@
   ++  on-fail   on-fail:def
   --
 :: start helper core
-|_  bowl=bowl:gall
+|_  bowl=bowl:gall  :: TODO: unused: needed?
 ++  handle-payload
   |=  =payload:ursr
   ^-  (quip card _state)
@@ -142,15 +174,21 @@
     ::
       %relay-options
     =/  options=options:ursr  +.action.payload
-    ~&  >  "ursr-provider: got %provider-start-job request: {<options>}"
-    :_  state
-    :~  [%give %fact ~[/urth-path] %ursr-payload !>([job-id.payload %relay-options options])]
+    %:  return-and-maybe-log
+        verbose.state
+        "ursr-provider: got %provider-start-job request: {<options>}"
+        :_  state
+        :~  [%give %fact ~[/urth-path] %ursr-payload !>([job-id.payload %relay-options options])]
+        ==
     ==
     ::
       %relay-reply
-    ~&  >  "ursr-provider: got %relay-reply request: {<+.action.payload>}"
-    :_  state
-    :~  [%give %fact ~[/provider-to-client/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
+    %:  return-and-maybe-log
+        verbose.state
+        "ursr-provider: got %relay-reply request: {<+.action.payload>}"
+        :_  state
+        :~  [%give %fact ~[/provider-to-client/(scot %ud job-id.payload)] %ursr-payload !>(payload)]
+        ==
     ==
     ::
       %audio-done
@@ -162,4 +200,10 @@
       %relay-audio
     ~&  >>>  "ursr-provider: unexpectedly received %relay-audio; ignoring"  `state
   ==
+::
+++  return-and-maybe-log
+  |=  [verbose=? maybe-log=tape return-val=(quip card _state)]
+  ^-  _return-val
+  ?.  verbose  return-val
+  ~&  >  maybe-log  return-val
 --
