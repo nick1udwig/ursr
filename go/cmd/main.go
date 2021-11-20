@@ -88,7 +88,7 @@ func monitorSubscriptionEvents(
 							"subscriptionId", event.ID,
 							"err", err,
 						)
-						if e, ok := err.(*json.UnmarshalTypeError); !ok {
+						if e, ok := err.(*json.UnmarshalTypeError); ok {
 							sugar.Warnw("Recovered and clipped first int16 out of bounds.")
 							clippedIndex := ursr.OffsetToIndex(event.Data, ',', int(e.Offset))
 							clippedValue := ursr.JsonValueToClippedInt16(e.Value)
