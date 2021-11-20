@@ -7,9 +7,10 @@ import (
 const (
 	AudioDoneSignal = "END-OF-FILE"
 
-	DefaultEngineUri string = "localhost:9900"
-	DefaultPasscode  string = "lapwen-fadtun-lagsyl-fadpex" // wes
-	DefaultShipUri   string = "http://localhost:8080"
+	DefaultEngineDialTimeout time.Duration = 60 * time.Second
+	DefaultEngineUri         string        = "localhost:9900"
+	DefaultPasscode          string        = "lapwen-fadtun-lagsyl-fadpex" // wes
+	DefaultShipUri           string        = "http://localhost:8080"
 
 	UrSrProviderAppName string = "ursr-provider"
 	UrSrProviderPath    string = "/urth-path"
@@ -21,6 +22,6 @@ var (
 
 	EngineUri string = DefaultEngineUri
 
-	// EngineDialTimeout      time.Duration = 60 * time.Second
+	EngineDialTimeout      time.Duration = DefaultEngineDialTimeout
 	ShipSubShutdownTimeout time.Duration = 60 * time.Second
 )

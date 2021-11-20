@@ -56,8 +56,9 @@ func (e *Job) DialEngine(uri string) (err error) {
 	if uri == "" {
 		uri = config.DefaultEngineUri
 	}
+	dialer := &net.Dialer{Timeout: config.EngineDialTimeout}
 
-	e.conn, err = net.Dial("tcp", uri)
+	e.conn, err = dialer.Dial("tcp", uri)
 	if err == nil {
 		e.sockReader = bufio.NewReader(e.conn)
 	}
@@ -95,6 +96,7 @@ func (e *Job) Close() error {
 	return e.conn.Close()
 }
 
+// Remove extra fields before passing to Urbit ship.
 func ReplyToUrbitFormat(r *ReplyEngineFormat) (replyUrbit ReplyUrbitFormat) {
 	replyUrbit = ReplyUrbitFormat{
 		Final:               r.Final,

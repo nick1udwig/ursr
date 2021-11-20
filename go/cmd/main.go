@@ -338,10 +338,15 @@ func parseArgs() {
 		config.DefaultPasscode,
 		"+code to the provider ship (default ship: ~wes).",
 	)
+	engineDialTimeout := flag.Int(
+		"enginetimeout",
+		int(config.DefaultEngineDialTimeout.Seconds()),
+		"Number of seconds to wait when attempting to initially connect to Engine.",
+	)
 	shipSubShutdownTimeout := flag.Int(
 		"ttl",
 		0,
-		"Number of seconds to connect provider to Engine (non-positive: forever).",
+		"Number of seconds to run this program to connect provider to Engine (non-positive: forever).",
 	)
 
 	flag.Parse()
@@ -349,6 +354,7 @@ func parseArgs() {
 	config.EngineUri = *engineUri
 	config.ShipUri = *shipUri
 	config.Passcode = *passcode
+	config.EngineDialTimeout = time.Duration(*engineDialTimeout) * time.Second
 	config.ShipSubShutdownTimeout = time.Duration(*shipSubShutdownTimeout) * time.Second
 
 	sugar.Infow(
@@ -356,6 +362,7 @@ func parseArgs() {
 		"engine", config.EngineUri,
 		"ship", config.ShipUri,
 		"code", "elided",
+		"enginetimeout", config.EngineDialTimeout,
 		"ttl", config.ShipSubShutdownTimeout,
 	)
 }
