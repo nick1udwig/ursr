@@ -73,10 +73,6 @@ func monitorSubscriptionEvents(
 	for {
 		select {
 		case event := <-ship.Events():
-			// sugar.Debugw(
-			// 	"Got event from ship.",
-			// 	"event", event,
-			// )
 			switch event.Type {
 			case "diff":
 				if event.ID == appSubscription.ID {
@@ -138,7 +134,6 @@ func startNewJob(ship *urbit.Client, payload *ursr.Payload, jobIdsToJobs map[uin
 		return
 	}
 
-	// TODO: Delay starting job until audio is received to reduce risk of Engine timeout?
 	err = newJob.SendOptions(payload.Action.RelayOptions)
 	if err != nil {
 		sugar.Errorw(
@@ -217,56 +212,53 @@ func relayReplies(ship *urbit.Client, job *engine.Job, jobId uint64) (err error)
 				"reply", *reply,
 			)
 			if reply.Transcript != "" {
-				// TODO: remove this hack
-				if reply.TranscriptFormatted != "" {
-					replyPayload := &ursr.ReplyPayload{
-						JobId: jobId,
-						Action: ursr.ReplyAction{
-							RelayReply: engine.ReplyToUrbitFormat(reply),
-						},
-					}
-					replyBytes, err := json.Marshal(replyPayload)
-					if err == nil {
-						pokeResult := ship.PokeShipMark(
-							ship.Name(),
-							config.UrSrProviderAppName,
-							"ursr-payload",
-							replyBytes,
-						)
-						err = pokeResult.Wait()
-						if err != nil {
-							sugar.Errorw(
-								"Failed to relay Engine reply to ship.",
-								"jobId", jobId,
-								"err", err,
-								"ship", ship.Name(),
-								"app", config.UrSrProviderAppName,
-								"mark", "ursr-action",
-								"replyPayload", replyPayload,
-								"replyBytes", replyBytes,
-							)
-						} else {
-							sugar.Debugw(
-								"Sent poke to relay Engine reply to ship.",
-								"jobId", jobId,
-								"ship", ship.Name(),
-								"app", config.UrSrProviderAppName,
-								"mark", "ursr-action",
-								"replyPayload", replyPayload,
-								"replyBytes", replyBytes,
-							)
-						}
-					} else {
+				replyPayload := &ursr.ReplyPayload{
+					JobId: jobId,
+					Action: ursr.ReplyAction{
+						RelayReply: engine.ReplyToUrbitFormat(reply),
+					},
+				}
+				replyBytes, err := json.Marshal(replyPayload)
+				if err == nil {
+					pokeResult := ship.PokeShipMark(
+						ship.Name(),
+						config.UrSrProviderAppName,
+						"ursr-payload",
+						replyBytes,
+					)
+					err = pokeResult.Wait()
+					if err != nil {
 						sugar.Errorw(
-							"Failed to marshal reply to ship.",
+							"Failed to relay Engine reply to ship.",
 							"jobId", jobId,
 							"err", err,
 							"ship", ship.Name(),
 							"app", config.UrSrProviderAppName,
 							"mark", "ursr-action",
 							"replyPayload", replyPayload,
+							"replyBytes", replyBytes,
+						)
+					} else {
+						sugar.Debugw(
+							"Sent poke to relay Engine reply to ship.",
+							"jobId", jobId,
+							"ship", ship.Name(),
+							"app", config.UrSrProviderAppName,
+							"mark", "ursr-action",
+							"replyPayload", replyPayload,
+							"replyBytes", replyBytes,
 						)
 					}
+				} else {
+					sugar.Errorw(
+						"Failed to marshal reply to ship.",
+						"jobId", jobId,
+						"err", err,
+						"ship", ship.Name(),
+						"app", config.UrSrProviderAppName,
+						"mark", "ursr-action",
+						"replyPayload", replyPayload,
+					)
 				}
 			}
 			reply, err = job.NextReply()
@@ -348,7 +340,7 @@ func parseArgs() {
 	)
 	shipSubShutdownTimeout := flag.Int(
 		"ttl",
-		60,
+		0,
 		"Number of seconds to connect provider to Engine (non-positive: forever).",
 	)
 
