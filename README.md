@@ -1,12 +1,9 @@
 # UrSR: Urbit Speech Recognition
 
-For some applications, speech is far more natural than text.
-UrSR aims to enable calm computing with the power of voice.
-It consists of a Gall app and a Golang middleman, and leverages the [Mod9 ASR Engine](https://mod9.io/) to make ASR as simple as a poke.
-
-WARNING: This is ALPHA software.
-It shouldn't brick your ship, but I would STRONGLY advise you to run this on a moon.
-You can find instructions on how to boot a moon [here](https://urbit.org/using/os/basics#moons).
+For some applications, speech is more natural than text.
+UrSR brings ASR (Automatic Speech Recognition) to Urbit.
+It consists of Gall apps and a Golang middleman, and leverages the [Mod9 ASR Engine](https://mod9.io/) to make ASR as simple as a poke.
+Aside from providing the infrastructure for developing speech-enabled apps, this project also contains a demo voice notes app.
 
 
 # Usage
@@ -16,20 +13,10 @@ You can find instructions on how to boot a moon [here](https://urbit.org/using/o
 To use the UrSR Demo Notbook voice notes app, you will need a machine with a mic and to:
 
 1. Know an UrSR provider (currently `~hoster-hosted-labweb` is running a provider node).
-1. Get the UrSR Client (which knows how to talk to the provider).
+1. Get the UrSR Client app (which knows how to talk to the provider).
 1. Get the UrSR Demo Notebook voice notes app (which is an *aesthetic* JS frontend).
 
-ON A MOON, install the UrSR Client and UrSR Demo Notebook apps:
-
-```
-:: Add my software distribution ship as a developer.
-:treaty|ally ~dister-hosted-labweb
-```
-
-Then, in Grid, search for `~dister-hosted-labweb` and click to install BOTH UrSR Client and UrSR Demo Notebook.
-The UrSR Client will run a Gall app that communicates with your UrSR Provider of choice, while the Demo Notebook is an example of a frontend webapp that can take advantage of ASR.
-
-(Alternative install method: `|install ~dister-hosted-labweb %ursr-client`).
+The UrSR Client and Demo Notebook apps can be installed from `~dister-hosted-labweb`.
 
 For best experience, create a group on your ship and a `Chat` channel within that group: the UrSR Demo Notebook will post transcripts to a chat.
 
@@ -42,7 +29,7 @@ For the `Provider` field, fill in
 ```
 
 which is my UrSR Provider ship.
-You will need to enter your `+code` (another good reason to do this ON A MOON) so the JS webapp can talk to your ship.
+You will need to enter your `+code` so the JS webapp can talk to your ship.
 And finally, write in the `Chat` channel name you created a moment ago.
 Look in the URL when you are in the `Chat` channel in order to get ghe chat name and place ONLY the chat name in this field.
 For example, if your URL when you are in the `Chat` channel is
@@ -63,29 +50,27 @@ The `Chat` MUST be hosted on your ship to work!
 
 ## Provider set up
 
-It is my intention to make provider set up easier, but until then, here is a guide.
-
 A provider needs to set up three things:
 
-1. The UrSR Provider Gall app on the provider ship.
+1. The UrSR Provider app on the provider ship.
 1. The Mod9 ASR Engine, a TCP server that will do the actual transcription.
-1. A Golang middleman that communicates between the UrSR Provider Gall app and the Mod9 ASR Engine.
+1. A Golang middleman that communicates between the UrSR Provider app and the Mod9 ASR Engine.
 
-### UrSR Provider Gall app
+### UrSR Provider app
 
-On your provider ship (recommended to be a moon!) install the UrSR Provider Gall app from my distribution ship `~dister-hosted-labweb`.
-See [UrSR Demo usage](#ursr-demo-notebook-usage-example) above for instructions on how to install.
+On your provider ship, install the UrSR Provider app from my distribution ship `~dister-hosted-labweb`.
 
-## Mod9 ASR Engine
+### Mod9 ASR Engine
 I recommend installing the Docker image of the Engine.
 To do so, make sure you have installed Docker and then run
 
-```
+```bash
 docker pull mod9/asr
 ```
 
 To run the Engine, use
-```
+
+```bash
 docker run -p 9900:9900 mod9/asr engine
 ```
 
@@ -95,7 +80,7 @@ Instructions on getting a licensed copy will appear here shortly.
 
 To run the trial Engine without CPU throttling, start it as follows:
 
-```
+```bash
 docker run -p 9900:9900 mod9/asr engine --accept-license=yes
 ```
 
@@ -103,24 +88,46 @@ For more information, please consult the [Engine documentation](https://mod9.io/
 
 ### Golang middleman
 The Golang middleman communicates between your provider ship and the Engine.
-In the future, it will be distributed as an exectuable.
-Until then, you will need to run the source.
-
-First, install Golang following [the docs on the Golang website](https://golang.org/doc/install).
+Executables can be found on [Github](https://github.com/hosted-fornet/ursr), or it can be run from source.
 
 ```bash
-# Pull the UrSR source code.
-git pull https://github.com/hosted-fornet/ursr.git
-
-# Navigate to the UrSR `go` directory.
-cd /path/to/ursr/go
-
 # View usage information.
-go run cmd/main.go -h
+./ursr-go -h
 
 # Run the Golang wrapper with the proper flags for your set up
 #  (examples for a fakeship `~wes` below):
-go run -code lapwen-fadtun-lagsyl-fadpex -engine localhost:9900 -ship localhost:8080 -ttl 0
+./ursr-go -code lapwen-fadtun-lagsyl-fadpex -engine localhost:9900 -ship localhost:8080 -ttl 0
+```
+
+### Whitelisting
+Whitelisting is provided by [the Whitelist library](https://github.com/hosted-fornet/whitelist).
+A provider can whitelist:
+
+* All ships,
+* Its kids,
+* A specific set of ships,
+* Ships belonging to a set of groups,
+
+or any combination thereof.
+
+By default, all of these will be disabled.
+To add to one of these whitelisted categories, use `%add-whitelist`; to remove, use `%remove-whitelist`.
+More details can be found at the link above, but here are some concrete examples:
+```
+:: Make provider public.
+:ursr-provider &whitelist-command [%add-whitelist ~[%public]]
+
+:: Remove permission from kids.
+:ursr-provider &whitelist-command [%remove-whitelist ~[%kids]]
+
+:: Add specific ship(s) to whitelist.
+:ursr-provider &whitelist-command [%add-whitelist [%users (silt ~[~hosted-fornet ~hosted-labweb])]]
+
+:: Remove specific ship(s) from whitelist.
+:ursr-provider &whitelist-command [%remove-whitelist [%users (silt ~[~hosted-fornet])]]
+
+:: Add group to whitelist (i.e. group membership means a ship can use your provider).
+:ursr-provider &whitelist-command [%remove-whitelist [%groups (silt ~[[~wisdem-hosted-labweb %homunculus]])]]
 ```
 
 
@@ -146,9 +153,9 @@ Hit me up at `~hosted-fornet` or come chat in
 
 # Privacy notice
 
-Since you are sending your audio to a provider to transcribe, you should not send sensitive audio to people you don't trust.
+If you are sending your audio to a provider to transcribe, you should not send sensitive audio unless you trust that provider.
 There is nothing stopping a sketchy provider from keeping your audio and your transcripts.
-If you have sensitive audio you wish to transcribe, you should set up your own provider node and use that.
+If you have sensitive audio you wish to transcribe, you should set up your own provider node and set it as the provider for your request.
 
 
 # Dev stuff
@@ -156,17 +163,17 @@ If you have sensitive audio you wish to transcribe, you should set up your own p
 ## Project structure
 
 UrSR uses a client-provider model, similar to the Urbit Bitcoin app.
-Providers will need more technical skills: in addition to running a Gall app, they will need to run the Mod9 ASR Engine which transcribes the audio sent by clients and a Golang middleman that mediates between the Provider Gall app and the Engine.
+Providers will need more technical skills than clients: in addition to running a Gall app, they will need to run the Mod9 ASR Engine, which transcribes the audio sent by clients, and a Golang middleman that mediates between the Provider app and the Engine.
 
-In contrast, a client need only install the UrSR Client Gall app and whatever application makes use of it.
-As an example, this repo includes the UrSR Demo Notebook, a simple JS voice notetaking application.
+In contrast, a client need only install the UrSR Client app and whatever application makes use of it.
+As an example, this repo includes the UrSR Demo Notebook, a simple voice notetaking application.
 With it, users can record from the mic on their computer to a Chat channel hosted on their ship.
 
-The UrSR Client and Provider are distributed using standard app distribution from my distribution ship `~dister-hosted-labweb`.
+The UrSR Client and Provider are distributed from my distribution ship `~dister-hosted-labweb`.
 These Gall apps have no frontend: they just talk to each other (and, in the case of the Client, to frontend or other Gall apps).
 
 The repository is structured as follows:
-* `go/` contains the Golang middleman that mediates between the transcription Engine and the Provider Gall app,
+* `go/` contains the Golang middleman that mediates between the transcription Engine and the Provider app,
 * `hoon/` contains four directories, three of which are distributed as Gall apps:
     * `ursr-client/` contains the UrSR Client,
     * `ursr-demo/` contains the UrSR Demo Notebook,
@@ -182,7 +189,7 @@ The repository is structured as follows:
 To start a transcription job, poke the UrSR Client running on your ship.
 The poke type is `ursr-payload`, which includes a `job-id=@ud`, and an `action`, here, `action=[%client-start-job =options provider=@p]`.
 The `job-id` is an `@ud` and *must be unique* to your job: recommended practice is to use a large random number for each job.
-The `provider` is a ship running the UrSR Provider Gall app to which your audio data will be sent for transcription.
+The `provider` is a ship running the UrSR Provider app to which your audio data will be sent for transcription.
 The `options` are settings for the transcription: documentation of these options can be found at [mod9.io](https://mod9.io).
 A recommended, basic set of options is
 
@@ -216,5 +223,4 @@ In addition to the `job-id`, the `action` passed should be `relay-audio`, with f
 
 # Acknowledgements
 
-You can find the grant proposal for this project
-[here](https://urbit.org/grants/speech-recognition).
+You can find the grant proposal for this project [here](https://urbit.org/grants/speech-recognition).
