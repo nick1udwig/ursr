@@ -31,7 +31,7 @@ For the `Provider` field, fill in
 which is my UrSR Provider ship.
 You will need to enter your `+code` so the JS webapp can talk to your ship.
 And finally, write in the `Chat` channel name you created a moment ago.
-Look in the URL when you are in the `Chat` channel in order to get ghe chat name and place ONLY the chat name in this field.
+Look in the URL when you are in the `Chat` channel in order to get the chat name and place ONLY the chat name in this field.
 For example, if your URL when you are in the `Chat` channel is
 
 ```
