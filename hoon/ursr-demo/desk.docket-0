@@ -1,10 +1,9 @@
 :~  title+'UrSR Demo Notebook'
-    info+'Simple voice notes app to demo UrSR'
+    info+'Voice notes app to demo UrSR'
     color+0x4b.4b4b
-    glob-http+['https://raw.githubusercontent.com/hosted-fornet/ursr/cf23d6af707a1a5f5aa6252db14ef6faeabe7095/globs/glob-0v3.gs19m.ec416.v4mot.t9pej.o9v6q.glob' 0v3.gs19m.ec416.v4mot.t9pej.o9v6q]
-    image+'https://raw.githubusercontent.com/hosted-fornet/ursr/59830883ee41c02825dc1e946e1fb755ff9f457b/images/211002-ursr-demo.png'
+    glob-http+['https://raw.githubusercontent.com/hosted-fornet/ursr/d02c3728a0bbe97922012baaf452ff7a15a03cc7/globs/glob-0v6.5c3tt.5g34o.3bdvm.u4kkq.ij7ni.glob' 0v6.5c3tt.5g34o.3bdvm.u4kkq.ij7ni]
     base+'ursr-demo'
-    version+[0 0 0]
+    version+[1 0 0]
     website+'https://github.com/hosted-fornet/ursr'
     license+'MIT'
 ==

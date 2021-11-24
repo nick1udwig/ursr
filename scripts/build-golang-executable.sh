@@ -26,7 +26,7 @@ for os in darwin linux; do
     for arch in amd64; do
         echo "Packaging ${os}-${arch}..."
 
-        mkdir ursr-go-v${version}-${os}-${arch}.tar.gz
+        mkdir ursr-go-v${version}-${os}-${arch}
         env GOOS=$os GOARCH=$arch go build -ldflags='-s -w' -o ursr-go-v${version}-${os}-${arch}/ursr-go cmd/main.go
         cp ../README.md ursr-go-v${version}-${os}-${arch}
         tar zcf ursr-go-v${version}-${os}-${arch}.tar.gz ursr-go-v${version}-${os}-${arch}

@@ -35,7 +35,7 @@ Look in the URL when you are in the `Chat` channel in order to get ghe chat name
 For example, if your URL when you are in the `Chat` channel is
 
 ```
-http://localhost:8081/apps/landscape/~landscape/ship/~nec/abcdefg/resource/chat/ship/~nec/my-voice-362
+http://localhost:8081/apps/landscape/.../~nec/my-voice-362
 ```
 
 then you should put
@@ -94,10 +94,13 @@ Executables can be found on [Github](https://github.com/hosted-fornet/ursr), or 
 # View usage information.
 ./ursr-go -h
 
-# Run the Golang wrapper with the proper flags for your set up
+# Run the Golang middleman with the proper flags for your set up
 #  (examples for a fakeship `~wes` below):
 ./ursr-go -code lapwen-fadtun-lagsyl-fadpex -engine localhost:9900 -ship localhost:8080 -ttl 0
 ```
+
+NOTE: The Golang middleman will log a line like `"Monitoring events..."` if it has connected to your ship.
+If you do not see this line, restart the middleman to make sure it has properly subscribed to your ship.
 
 ### Whitelisting
 Whitelisting is provided by [the Whitelist library](https://github.com/hosted-fornet/whitelist).

@@ -2,9 +2,8 @@
     info+'Urbit Speech Recognition client CLI'
     color+0x4b.4b4b
     glob-http+['https://raw.githubusercontent.com/hosted-fornet/ursr/bcd9753be21492f5050b1c7262ab2856fc5f3321/globs/glob-0v5.86m6s.nq27q.5292m.i3jj2.9sau5.glob' 0v5.86m6s.nq27q.5292m.i3jj2.9sau5]
-    image+'https://raw.githubusercontent.com/hosted-fornet/ursr/59830883ee41c02825dc1e946e1fb755ff9f457b/images/211002-ursr-client.png'
     base+'ursr-client'
-    version+[0 0 0]
+    version+[1 0 0]
     website+'https://github.com/hosted-fornet/ursr'
     license+'MIT'
 ==

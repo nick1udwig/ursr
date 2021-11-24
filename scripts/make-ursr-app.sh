@@ -88,7 +88,7 @@ if [ "$path_to_app_code" != "" ]; then
     fi
 fi
 
-echo "[%zuse 420]" > ${app_name}/sys.kelvin
+echo "[%zuse 419]" > ${app_name}/sys.kelvin
 
 # Place the desk in given pier.
 rm -rf "${path_to_pier}/${app_name}"
