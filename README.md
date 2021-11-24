@@ -10,6 +10,18 @@ Aside from providing the infrastructure for developing speech-enabled apps, this
 
 ## UrSR Demo Notebook usage example
 
+### TL;DR
+
+1. Install UrSR Client and UrSR Demo Notebook apps from `~dister-hosted-labweb`.
+1. Create a group and chat on your ship to store voice notes.
+1. Open the UrSR Demo Notebook app and fill in:
+    1. `Provider` as `~hoster-hosted-labweb`,
+    1. `+code` as your ship's `+code`,
+    1. `Chat` as the name of the chat you just made (get the final part of the URL and copy-paste).
+1. Click `Send` to start taking voice notes and `Stop` to stop!
+
+### More details
+
 To use the UrSR Demo Notbook voice notes app, you will need a machine with a mic and to:
 
 1. Know an UrSR provider (currently `~hoster-hosted-labweb` is running a provider node).
