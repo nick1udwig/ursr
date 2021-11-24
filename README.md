@@ -107,7 +107,7 @@ Executables can be found on [Github](https://github.com/hosted-fornet/ursr), or 
 ./ursr-go -h
 
 # Run the Golang middleman with the proper flags for your set up
-#  (examples for a fakeship `~wes` below):
+#  (examples for a fakeship ~wes below):
 ./ursr-go -code lapwen-fadtun-lagsyl-fadpex -engine localhost:9900 -ship localhost:8080 -ttl 0
 ```
 
