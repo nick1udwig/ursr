@@ -116,6 +116,7 @@ or any combination thereof.
 By default, all of these will be disabled.
 To add to one of these whitelisted categories, use `%add-whitelist`; to remove, use `%remove-whitelist`.
 More details can be found at the link above, but here are some concrete examples:
+
 ```
 :: Make provider public.
 :ursr-provider &whitelist-command [%add-whitelist ~[%public]]
@@ -205,6 +206,7 @@ A recommended, basic set of options is
     "transcript-formatted": true
 }
 ```
+
 for audio streamed from a microphone at 16kHz.
 16kHz audio is recommended for use with the default transcription model used by the Engine: other rates will be resampled internally.
 
